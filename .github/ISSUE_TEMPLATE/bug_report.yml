@@ -1,0 +1,73 @@
+name: Bug report
+description: Report a reproducible problem in Allure Dart.
+title: "Bug: "
+labels: ["triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a problem. Please include enough detail for us to reproduce it.
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Describe the observed behavior and what you expected instead.
+    validations:
+      required: true
+  - type: dropdown
+    id: package
+    attributes:
+      label: Affected package
+      multiple: true
+      options:
+        - allure_dart_commons
+        - allure_dart_test
+        - allure_flutter_test
+        - unknown
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Allure Dart version
+      placeholder: 0.1.0
+    validations:
+      required: true
+  - type: input
+    id: dart-version
+    attributes:
+      label: Dart version
+      placeholder: Dart SDK version 3.6.0
+    validations:
+      required: true
+  - type: input
+    id: flutter-version
+    attributes:
+      label: Flutter version
+      placeholder: Flutter 3.24.0
+  - type: input
+    id: allure-version
+    attributes:
+      label: Allure Report version
+      placeholder: 3.8.2
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: Provide a minimal test, repository, or command sequence.
+      placeholder: |
+        dart test
+    validations:
+      required: true
+  - type: textarea
+    id: results
+    attributes:
+      label: Result files or logs
+      description: Attach relevant allure-results files, report screenshots, or console output.
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Code of Conduct
+      options:
+        - label: I agree to follow this project's Code of Conduct.
+          required: true

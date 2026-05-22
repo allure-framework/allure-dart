@@ -1,0 +1,24 @@
+# macOS
+.DS_Store
+
+# Dart / Pub
+.dart_tool/
+.packages
+.pub/
+pubspec.lock
+build/
+doc/api/
+
+# Coverage
+coverage/
+
+# IDEs
+.idea/
+.vscode/
+
+# Logs
+*.log
+
+# Allure output
+allure-results/
+allure-report/

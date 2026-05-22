@@ -1,0 +1,7 @@
+include: package:lints/recommended.yaml
+
+analyzer:
+  exclude:
+    - allure-results/**
+    - allure-report/**
+    - build/**

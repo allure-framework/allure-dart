@@ -1,0 +1,145 @@
+name: Build
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - '**'
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  build:
+    name: Build (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Ubuntu
+            os: ubuntu-latest
+            allure-env: ubuntu-dart-stable
+            dump-name: allure-results-test-ubuntu
+          - name: Windows
+            os: windows-latest
+            allure-env: windows-dart-stable
+            dump-name: allure-results-test-windows
+    env:
+      ALLURE_MATRIX_ENV: ${{ matrix.allure-env }}
+      ALLURE_TEST_DUMP_NAME: ${{ matrix.dump-name }}
+      DART_SUPPRESS_ANALYTICS: 'true'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Install workspace dependencies
+        run: dart pub get
+
+      - name: Install Flutter adapter dependencies
+        working-directory: packages/allure_flutter_test
+        run: flutter pub get
+
+      - name: Run commons tests with Allure
+        if: always()
+        working-directory: packages/allure_dart_commons
+        shell: bash
+        run: >
+          npx -y allure@3 run
+          --config "$GITHUB_WORKSPACE/allurerc.mjs"
+          --rerun 2
+          --environment="${{ env.ALLURE_MATRIX_ENV }}"
+          --dump="${{ env.ALLURE_TEST_DUMP_NAME }}-commons"
+          -- dart test
+
+      - name: Run package:test adapter tests with Allure
+        if: always()
+        working-directory: packages/allure_dart_test
+        shell: bash
+        run: >
+          npx -y allure@3 run
+          --config "$GITHUB_WORKSPACE/allurerc.mjs"
+          --rerun 2
+          --environment="${{ env.ALLURE_MATRIX_ENV }}"
+          --dump="${{ env.ALLURE_TEST_DUMP_NAME }}-dart-test"
+          -- dart test
+
+      - name: Run Flutter adapter tests with Allure
+        if: always()
+        working-directory: packages/allure_flutter_test
+        shell: bash
+        run: >
+          npx -y allure@3 run
+          --config "$GITHUB_WORKSPACE/allurerc.mjs"
+          --rerun 2
+          --environment="${{ env.ALLURE_MATRIX_ENV }}"
+          --dump="${{ env.ALLURE_TEST_DUMP_NAME }}-flutter-test"
+          -- flutter test test
+
+      - name: Upload Allure test dumps
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ALLURE_TEST_DUMP_NAME }}
+          path: ./packages/**/${{ env.ALLURE_TEST_DUMP_NAME }}-*.zip
+
+  report:
+    needs: [build]
+    name: Build report
+    runs-on: ubuntu-latest
+    if: always()
+    permissions:
+      contents: read
+      pull-requests: write
+      checks: write
+    env:
+      ALLURE_SERVICE_TOKEN: ${{ secrets.ALLURE_SERVICE_TOKEN }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+
+      - name: Download Allure dumps
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          pattern: allure-results-*
+          path: ./
+          merge-multiple: true
+
+      - name: Generate Allure report
+        run: >
+          npx -y allure@3 generate
+          --config ./allurerc.mjs
+          --dump="./**/allure-results-*.zip"
+          --output=./build/allure-report
+
+      - name: Post Allure summary
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false
+        uses: allure-framework/allure-action@v0
+        with:
+          report-directory: ./build/allure-report
+          github-token: ${{ secrets.GITHUB_TOKEN }}

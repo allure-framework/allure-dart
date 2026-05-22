@@ -1,0 +1,89 @@
+name: Publish Packages
+
+on:
+  push:
+    tags:
+      - 'allure_dart_commons-v*'
+      - 'allure_dart_test-v*'
+      - 'allure_flutter_test-v*'
+
+permissions:
+  contents: read
+
+env:
+  HOME: /tmp/codex-home
+  DART_SUPPRESS_ANALYTICS: 'true'
+
+jobs:
+  verify:
+    name: Verify ${{ github.ref_name }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Install workspace dependencies
+        if: startsWith(github.ref_name, 'allure_dart_commons-v') || startsWith(github.ref_name, 'allure_dart_test-v')
+        run: dart pub get
+
+      - name: Run commons tests
+        if: startsWith(github.ref_name, 'allure_dart_commons-v')
+        working-directory: packages/allure_dart_commons
+        run: dart test
+
+      - name: Run package:test adapter tests
+        if: startsWith(github.ref_name, 'allure_dart_test-v')
+        working-directory: packages/allure_dart_test
+        run: dart test
+
+      - name: Install Flutter adapter dependencies
+        if: startsWith(github.ref_name, 'allure_flutter_test-v')
+        working-directory: packages/allure_flutter_test
+        run: flutter pub get
+
+      - name: Run Flutter adapter tests
+        if: startsWith(github.ref_name, 'allure_flutter_test-v')
+        working-directory: packages/allure_flutter_test
+        run: flutter test test
+
+  publish-commons:
+    name: Publish allure_dart_commons
+    if: startsWith(github.ref_name, 'allure_dart_commons-v')
+    needs: verify
+    permissions:
+      contents: read
+      id-token: write
+    uses: dart-lang/setup-dart/.github/workflows/publish.yml@v1
+    with:
+      working-directory: packages/allure_dart_commons
+      environment: pub.dev
+
+  publish-dart-test:
+    name: Publish allure_dart_test
+    if: startsWith(github.ref_name, 'allure_dart_test-v')
+    needs: verify
+    permissions:
+      contents: read
+      id-token: write
+    uses: dart-lang/setup-dart/.github/workflows/publish.yml@v1
+    with:
+      working-directory: packages/allure_dart_test
+      environment: pub.dev
+
+  publish-flutter-test:
+    name: Publish allure_flutter_test
+    if: startsWith(github.ref_name, 'allure_flutter_test-v')
+    needs: verify
+    permissions:
+      contents: read
+      id-token: write
+    uses: dart-lang/setup-dart/.github/workflows/publish.yml@v1
+    with:
+      working-directory: packages/allure_flutter_test
+      environment: pub.dev

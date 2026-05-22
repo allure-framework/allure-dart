@@ -1,0 +1,42 @@
+name: Feature request
+description: Suggest an improvement for Allure Dart.
+title: "Feature: "
+labels: ["triage"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What use case should this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: Describe the API, behavior, or documentation change you would like.
+    validations:
+      required: true
+  - type: dropdown
+    id: package
+    attributes:
+      label: Target package
+      multiple: true
+      options:
+        - allure_dart_commons
+        - allure_dart_test
+        - allure_flutter_test
+        - new package
+        - documentation
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives
+      description: Describe any workaround or alternative design you considered.
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Code of Conduct
+      options:
+        - label: I agree to follow this project's Code of Conduct.
+          required: true

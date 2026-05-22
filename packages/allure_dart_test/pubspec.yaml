@@ -1,0 +1,19 @@
+name: allure_dart_test
+description: Allure Report adapter for package:test suites in Dart.
+version: 0.1.0
+homepage: https://github.com/allure-framework/allure-dart
+repository: https://github.com/allure-framework/allure-dart
+issue_tracker: https://github.com/allure-framework/allure-dart/issues
+resolution: workspace
+
+environment:
+  sdk: ^3.6.0
+
+dependencies:
+  allure_dart_commons: ^0.1.0
+  path: ^1.9.0
+  test: ^1.25.0
+  test_api: ^0.7.0
+
+dev_dependencies:
+  lints: ^5.1.1

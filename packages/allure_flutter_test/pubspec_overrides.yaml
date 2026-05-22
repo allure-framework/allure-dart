@@ -1,0 +1,5 @@
+dependency_overrides:
+  allure_dart_commons:
+    path: ../allure_dart_commons
+  allure_dart_test:
+    path: ../allure_dart_test
