@@ -1,4 +1,8 @@
+test/
+integration_test/
 pubspec_overrides.yaml
+.flutter-plugins
+.flutter-plugins-dependencies
 .dart_tool/
 build/
 allure-results/

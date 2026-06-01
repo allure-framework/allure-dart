@@ -1,0 +1,5 @@
+test/
+.dart_tool/
+build/
+allure-results/
+allure-report/
