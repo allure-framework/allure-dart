@@ -14,6 +14,21 @@ Before opening a pull request:
 4. Read `docs/allure-agent-mode.md` before adding, changing, or validating
    tests.
 
+For local Flutter adapter development, create local workspace overrides before
+running `flutter pub get`:
+
+```bash
+bash scripts/setup-flutter-workspace.sh
+cd packages/allure_flutter_test
+flutter pub get
+```
+
+Remove the generated override before publishing the Flutter package:
+
+```bash
+rm packages/allure_flutter_test/pubspec_overrides.yaml
+```
+
 ## Repository Layout
 
 - `packages/allure_dart_commons` contains the framework-neutral lifecycle,
@@ -54,7 +69,6 @@ When opening a pull request:
 - Keep the change focused.
 - Include tests or explain why tests are not needed.
 - Update package documentation when public behavior changes.
-- Update the relevant package changelog for user-visible changes.
 - Describe runtime evidence when the change affects reporting output.
 
 ## Licensing
