@@ -1,6 +1,6 @@
 name: allure_flutter_test
 description: Allure Report adapter for flutter_test and host-run integration_test.
-version: 0.1.0
+version: 1.0.0
 homepage: https://github.com/allure-framework/allure-dart
 repository: https://github.com/allure-framework/allure-dart
 issue_tracker: https://github.com/allure-framework/allure-dart/issues
@@ -10,8 +10,8 @@ environment:
   flutter: '>=3.24.0'
 
 dependencies:
-  allure_dart_commons: ^0.1.0
-  allure_dart_test: ^0.1.0
+  allure_dart_commons: ^1.0.0
+  allure_dart_test: ^1.0.0
   flutter:
     sdk: flutter
   flutter_test:

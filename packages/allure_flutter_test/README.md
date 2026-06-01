@@ -9,7 +9,7 @@ Add the package to your `pubspec.yaml`:
 
 ```yaml
 dev_dependencies:
-  allure_flutter_test: ^0.1.0
+  allure_flutter_test: ^1.0.0
 ```
 
 Install once for existing `flutter_test` suites with `flutter_test_config.dart`:

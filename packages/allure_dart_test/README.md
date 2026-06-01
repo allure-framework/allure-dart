@@ -8,7 +8,7 @@ Add the package to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  allure_dart_test: ^0.1.0
+  allure_dart_test: ^1.0.0
 ```
 
 Use the runtime plugin for existing suites:
