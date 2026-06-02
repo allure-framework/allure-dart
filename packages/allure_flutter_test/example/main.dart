@@ -3,8 +3,6 @@ import 'package:allure_flutter_test/flutter_test.dart';
 import 'package:flutter/widgets.dart';
 
 void main() {
-  installAllure();
-
   testWidgets('renders sample text', (tester) async {
     await step('render sample widget', (_) async {
       await tester.pumpWidget(
