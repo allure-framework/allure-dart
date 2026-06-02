@@ -4,6 +4,7 @@ import 'package:allure_dart_test/allure_dart_test.dart'
 import 'package:flutter/widgets.dart';
 import 'package:integration_test/integration_test.dart';
 
+/// Installs the Allure runtime plugin for Flutter tests.
 void installAllure({AllureLifecycle? lifecycle}) {
   AllureTestRuntimePlugin.ensureInstalled(
     lifecycle: lifecycle,

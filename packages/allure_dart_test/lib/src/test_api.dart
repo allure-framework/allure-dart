@@ -7,24 +7,32 @@ import 'package:test_api/src/backend/invoker.dart' as internal_invoker;
 
 import 'package_test_support.dart';
 
+/// Global lifecycle used by the `allureTest` convenience API.
 final AllureLifecycle globalAllureLifecycle = AllureLifecycle();
 final TestRuntime _globalAllureRuntime = MessageTestRuntime(
   sink: globalAllureLifecycle,
   contextResolver: getZoneExecutionContext,
 );
 
+/// Body callback for [allureTest].
 typedef AllureTestBody = FutureOr<void> Function(AllureTestContext context);
 
+/// Allure helpers scoped to a single `allureTest` body.
 class AllureTestContext {
+  /// Creates a test context for [testUuid].
   AllureTestContext(this._lifecycle, this.testUuid);
 
   final AllureLifecycle _lifecycle;
+
+  /// UUID of the active Allure test result.
   final String testUuid;
 
+  /// Runs [body] inside an Allure step.
   Future<T> step<T>(String name, FutureOr<T> Function() body) {
     return _lifecycle.runStep(testUuid, name, body);
   }
 
+  /// Adds a binary attachment to the current test.
   Future<void> attachment({
     required String name,
     required String type,
@@ -42,6 +50,7 @@ class AllureTestContext {
     );
   }
 
+  /// Adds a text attachment to the current test.
   Future<void> textAttachment({
     required String name,
     required String content,
@@ -59,6 +68,7 @@ class AllureTestContext {
     );
   }
 
+  /// Adds an attachment from a byte stream to the current test.
   Future<void> streamAttachment({
     required String name,
     required Stream<List<int>> content,
@@ -76,6 +86,7 @@ class AllureTestContext {
     );
   }
 
+  /// Adds an attachment through a prepared temporary file.
   Future<void> preparedAttachment({
     required String name,
     required String type,
@@ -93,6 +104,7 @@ class AllureTestContext {
     );
   }
 
+  /// Adds a label to the current test.
   Future<void> label(String name, String value) =>
       _lifecycle.handleRuntimeMessage(
         RuntimeMessage(
@@ -106,6 +118,7 @@ class AllureTestContext {
         rootUuid: testUuid,
       );
 
+  /// Adds a parameter to the current test.
   Future<void> parameter(
     String name,
     Object? value, {
@@ -130,6 +143,7 @@ class AllureTestContext {
     );
   }
 
+  /// Sets the test case name for the current test.
   Future<void> testCaseName(String value) {
     return _lifecycle.handleRuntimeMessage(
       RuntimeMessage(
@@ -140,6 +154,7 @@ class AllureTestContext {
     );
   }
 
+  /// Adds status details to the current test.
   Future<void> statusDetails({
     String? message,
     String? trace,
@@ -169,6 +184,7 @@ class AllureTestContext {
   }
 }
 
+/// Defines a `package:test` test with an [AllureTestContext].
 void allureTest(
   String description,
   AllureTestBody body, {

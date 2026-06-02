@@ -7,10 +7,13 @@ import 'package:path/path.dart' as p;
 
 import 'model.dart';
 
+/// Label name used to mark tests excluded by an Allure test plan.
 const String allureTestPlanSkipLabel = 'ALLURE_TESTPLAN_SKIP';
 
+/// Returns the current timestamp in milliseconds since epoch.
 int currentTimestamp() => DateTime.now().millisecondsSinceEpoch;
 
+/// Resolves start and stop timestamps from optional timing values.
 ({int start, int stop}) normalizeTiming({
   int? start,
   int? stop,
@@ -43,8 +46,10 @@ int currentTimestamp() => DateTime.now().millisecondsSinceEpoch;
   return (start: resolvedStart.round(), stop: resolvedStop.round());
 }
 
+/// Returns the MD5 hash of [value] as a lowercase hexadecimal string.
 String md5Hash(String value) => md5.convert(utf8.encode(value)).toString();
 
+/// Serializes [value] for use in Allure parameters and details.
 String serializeValue(Object? value) {
   if (value == null) {
     return 'null';
@@ -62,6 +67,7 @@ String serializeValue(Object? value) {
   }
 }
 
+/// Maps an error object to the closest Allure status.
 AllureStatus getStatusFromError(Object error, [StackTrace? stackTrace]) {
   final typeName = error.runtimeType.toString().toLowerCase();
   final message = error.toString().toLowerCase();
@@ -86,6 +92,7 @@ AllureStatus getStatusFromError(Object error, [StackTrace? stackTrace]) {
   return AllureStatus.broken;
 }
 
+/// Extracts an Allure status message, trace, actual, and expected values.
 AllureStatusDetails getMessageAndTraceFromError(
   Object error, [
   StackTrace? stackTrace,
@@ -136,6 +143,7 @@ Object? _readDynamicField(Object? target, String field) {
   }
 }
 
+/// Builds suite labels from a hierarchy of suite names.
 List<AllureLabel> getSuiteLabels(List<String> suites) {
   if (suites.isEmpty) {
     return const <AllureLabel>[];
@@ -156,6 +164,7 @@ List<AllureLabel> getSuiteLabels(List<String> suites) {
   ];
 }
 
+/// Adds default suite labels to [test] when none are already present.
 void ensureSuiteLabels(AllureTestResult test, List<String> defaultSuites) {
   final existingSuiteLabels = test.labels
       .where((label) =>
@@ -169,6 +178,7 @@ void ensureSuiteLabels(AllureTestResult test, List<String> defaultSuites) {
   test.labels.addAll(getSuiteLabels(defaultSuites));
 }
 
+/// Converts `ALLURE_LABEL_*` environment variables to Allure labels.
 List<AllureLabel> getEnvironmentLabels([Map<String, String>? environment]) {
   final source = environment ?? Platform.environment;
   final labels = <AllureLabel>[];
@@ -185,37 +195,46 @@ List<AllureLabel> getEnvironmentLabels([Map<String, String>? environment]) {
   return labels;
 }
 
+/// Returns the host label for the current machine.
 AllureLabel getHostLabel() =>
     AllureLabel(name: 'host', value: Platform.localHostname);
 
+/// Returns a thread label using [threadId] or the current process id.
 AllureLabel getThreadLabel([String? threadId]) => AllureLabel(
       name: 'thread',
       value: threadId ?? 'pid-$pid',
     );
 
+/// Returns a package label with [filepath] relative to the current directory.
 AllureLabel getPackageLabel(String filepath) =>
     AllureLabel(name: 'package', value: getRelativePath(filepath));
 
+/// Returns the Dart language label.
 AllureLabel getLanguageLabel() =>
     const AllureLabel(name: 'language', value: 'dart');
 
+/// Returns a framework label for [framework].
 AllureLabel getFrameworkLabel(String framework) =>
     AllureLabel(name: 'framework', value: framework);
 
+/// Returns [filepath] relative to the current directory using POSIX separators.
 String getRelativePath(String filepath) {
   final current = Directory.current.path;
   final relative = p.relative(filepath, from: current);
   return getPosixPath(relative);
 }
 
+/// Converts platform path separators in [filepath] to POSIX separators.
 String getPosixPath(String filepath) => filepath.replaceAll('\\', '/');
 
+/// Applies a link template to [value].
 String applyLinkTemplate(String template, String value) {
   return template.contains('{}')
       ? template.replaceAll('{}', value)
       : template.replaceAll('%s', value);
 }
 
+/// Formats an Allure link with URL and name templates.
 AllureLink formatLink(
   Map<String, String> urlTemplates,
   Map<String, String> nameTemplates,
@@ -236,6 +255,7 @@ AllureLink formatLink(
   return AllureLink(url: formattedUrl, name: formattedName, type: link.type);
 }
 
+/// Formats a collection of Allure links with URL and name templates.
 List<AllureLink> formatLinks(
   Map<String, String> urlTemplates,
   Map<String, String> nameTemplates,
@@ -253,6 +273,7 @@ bool _isAbsoluteUrl(String value) {
       (uri.host.isNotEmpty || uri.scheme == 'file');
 }
 
+/// Derives an attachment file extension from explicit or inferred metadata.
 String? deriveAttachmentExtension({
   String? fileExtension,
   String? originalPath,
@@ -281,10 +302,12 @@ String _normalizeExtension(String value) {
   return sanitized.isEmpty ? '' : '.$sanitized';
 }
 
+/// Whether [labels] contain the Allure test-plan skip marker.
 bool hasSkipLabel(Iterable<AllureLabel> labels) {
   return labels.any((label) => label.name == allureTestPlanSkipLabel);
 }
 
+/// Serializes environment properties in `.properties` file format.
 String stringifyEnvironmentInfo(AllureEnvironmentInfo info) {
   final buffer = StringBuffer();
   for (final entry in info.entries) {

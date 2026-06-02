@@ -12,20 +12,8 @@ dev_dependencies:
   allure_flutter_test: ^1.0.0
 ```
 
-Install once for existing `flutter_test` suites with `flutter_test_config.dart`:
-
-```dart
-import 'dart:async';
-
-import 'package:allure_flutter_test/allure_flutter_test.dart';
-
-Future<void> testExecutable(FutureOr<void> Function() testMain) async {
-  installAllure();
-  await testMain();
-}
-```
-
-Or use the drop-in wrapper:
+For widget tests, replace the normal `flutter_test` import with the Allure
+drop-in import:
 
 ```dart
 import 'package:allure_flutter_test/flutter_test.dart';
@@ -37,7 +25,8 @@ void main() {
 }
 ```
 
-For host-run integration tests:
+For host-run integration tests, replace the normal `integration_test` import
+with the Allure integration-test wrapper:
 
 ```dart
 import 'package:allure_flutter_test/integration_test.dart';
@@ -48,6 +37,20 @@ void main() {
   testWidgets('example', (tester) async {
     expect(find.text('missing'), findsNothing);
   });
+}
+```
+
+If you need to keep the original framework imports or provide a custom
+`AllureLifecycle`, install the runtime explicitly in `test/flutter_test_config.dart`:
+
+```dart
+import 'dart:async';
+
+import 'package:allure_flutter_test/allure_flutter_test.dart';
+
+Future<void> testExecutable(FutureOr<void> Function() testMain) async {
+  installAllure();
+  await testMain();
 }
 ```
 

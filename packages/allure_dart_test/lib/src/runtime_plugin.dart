@@ -8,9 +8,12 @@ import 'package:test_api/src/backend/invoker.dart' as internal_invoker;
 import 'package_test_registry.dart';
 import 'package_test_support.dart';
 
+/// Resolves the Allure framework label for the active test framework.
 typedef FrameworkLabelResolver = String Function();
 
+/// Runtime plugin that records `package:test` execution as Allure results.
 class AllureTestRuntimePlugin {
+  /// Creates a runtime plugin.
   AllureTestRuntimePlugin({
     AllureLifecycle? lifecycle,
     FrameworkLabelResolver? frameworkLabelResolver,
@@ -26,8 +29,10 @@ class AllureTestRuntimePlugin {
   final TestPlanV1? _testPlan;
   final Expando<String> _uuidByTest = Expando<String>('allure_test_uuid');
 
+  /// Lifecycle used by this plugin.
   AllureLifecycle get lifecycle => _lifecycle;
 
+  /// Installs and returns the process-wide Allure runtime plugin.
   static AllureTestRuntimePlugin ensureInstalled({
     AllureLifecycle? lifecycle,
     FrameworkLabelResolver? frameworkLabelResolver,
@@ -41,6 +46,7 @@ class AllureTestRuntimePlugin {
     return plugin;
   }
 
+  /// Installs lifecycle hooks into `package:test`.
   void install() {
     if (identical(_installedPlugin, this)) {
       return;
@@ -76,6 +82,7 @@ class AllureTestRuntimePlugin {
     });
   }
 
+  /// Resolves the current Allure execution context for runtime APIs.
   AllureExecutionContext? currentExecutionContext() {
     final zoneContext = getZoneExecutionContext();
     if (zoneContext != null) {
@@ -96,6 +103,7 @@ class AllureTestRuntimePlugin {
     );
   }
 
+  /// Wraps a `setUp` callback so it is recorded as an Allure fixture.
   FutureOr<dynamic> Function() wrapSetUp(
     FutureOr<dynamic> Function() callback,
   ) {
@@ -138,6 +146,7 @@ class AllureTestRuntimePlugin {
     };
   }
 
+  /// Wraps a `tearDown` callback so it is recorded as an Allure fixture.
   FutureOr<dynamic> Function() wrapTearDown(
     FutureOr<dynamic> Function() callback,
   ) {
@@ -180,6 +189,7 @@ class AllureTestRuntimePlugin {
     };
   }
 
+  /// Wraps a `setUpAll` callback so it is recorded as an Allure fixture.
   FutureOr<dynamic> Function() wrapSetUpAll(
     FutureOr<dynamic> Function() callback, {
     required List<String> groupPath,
@@ -222,6 +232,7 @@ class AllureTestRuntimePlugin {
     };
   }
 
+  /// Wraps a `tearDownAll` callback so it is recorded as an Allure fixture.
   FutureOr<dynamic> Function() wrapTearDownAll(
     FutureOr<dynamic> Function() callback, {
     required List<String> groupPath,
@@ -494,6 +505,7 @@ class AllureTestRuntimePlugin {
   }
 }
 
+/// Installs the Allure runtime plugin for `package:test`.
 void installAllure({AllureLifecycle? lifecycle}) {
   AllureTestRuntimePlugin.ensureInstalled(lifecycle: lifecycle);
 }

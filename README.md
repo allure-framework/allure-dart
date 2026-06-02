@@ -107,20 +107,8 @@ Add the Flutter adapter:
 flutter pub add --dev allure_flutter_test
 ```
 
-For widget tests, install Allure once in `test/flutter_test_config.dart`:
-
-```dart
-import 'dart:async';
-
-import 'package:allure_flutter_test/allure_flutter_test.dart';
-
-Future<void> testExecutable(FutureOr<void> Function() testMain) async {
-  installAllure();
-  await testMain();
-}
-```
-
-Then keep normal `flutter_test` tests, or use the drop-in wrapper:
+For widget tests, replace the normal `flutter_test` import with the Allure
+drop-in import:
 
 ```dart
 import 'package:allure_flutter_test/flutter_test.dart';
@@ -135,6 +123,20 @@ void main() {
 
     expect(find.text('No items'), findsOneWidget);
   });
+}
+```
+
+If you need to keep the original framework imports or provide a custom
+`AllureLifecycle`, install the runtime explicitly in `test/flutter_test_config.dart`:
+
+```dart
+import 'dart:async';
+
+import 'package:allure_flutter_test/allure_flutter_test.dart';
+
+Future<void> testExecutable(FutureOr<void> Function() testMain) async {
+  installAllure();
+  await testMain();
 }
 ```
 

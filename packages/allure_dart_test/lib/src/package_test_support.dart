@@ -5,7 +5,9 @@ import 'package:path/path.dart' as p;
 
 import 'package:allure_dart_commons/allure_dart_commons.dart';
 
+/// Metadata derived from a `package:test` declaration or runtime test.
 class PackageTestMetadata {
+  /// Creates package test metadata.
   const PackageTestMetadata({
     required this.name,
     required this.fullName,
@@ -22,20 +24,46 @@ class PackageTestMetadata {
     required this.skipped,
   });
 
+  /// Display name for the test result.
   final String name;
+
+  /// Fully qualified name used for selectors and history.
   final String fullName;
+
+  /// Human-readable test case name.
   final String testCaseName;
+
+  /// Title path used by Allure for nested test names.
   final List<String> titlePath;
+
+  /// Group path that contains the test.
   final List<String> groupPath;
+
+  /// Test file path relative to the package, when known.
   final String? packagePath;
+
+  /// Labels parsed or inferred for the test.
   final List<AllureLabel> labels;
+
+  /// Links parsed or inferred for the test.
   final List<AllureLink> links;
+
+  /// Parameters parsed or inferred for the test.
   final List<AllureParameter> parameters;
+
+  /// External Allure id parsed from metadata, when present.
   final String? externalId;
+
+  /// Native selector used by Allure test plan matching.
   final String? nativeSelector;
+
+  /// Raw `package:test` tags observed for the test.
   final List<String> rawTags;
+
+  /// Whether the test was declared as skipped.
   final bool skipped;
 
+  /// Best-effort class label value for the test.
   String get testClass {
     if (groupPath.isNotEmpty) {
       return groupPath.last;
@@ -47,6 +75,7 @@ class PackageTestMetadata {
   }
 }
 
+/// Builds Allure metadata from package test declaration details.
 PackageTestMetadata buildPackageTestMetadata({
   required String rawName,
   Iterable<String> rawTags = const <String>[],
@@ -116,6 +145,7 @@ PackageTestMetadata buildPackageTestMetadata({
   );
 }
 
+/// Merges runtime metadata with metadata captured at declaration time.
 PackageTestMetadata mergePackageTestMetadata(
   PackageTestMetadata runtimeMetadata,
   PackageTestMetadata? declarationMetadata,
@@ -150,6 +180,7 @@ PackageTestMetadata mergePackageTestMetadata(
   );
 }
 
+/// Builds the Allure scope id for a package test group path.
 String buildPackageTestScopeId(String? packagePath, List<String> groupPath) {
   final scopeRoot = packagePath ?? '<unknown>';
   if (groupPath.isEmpty) {
@@ -158,6 +189,7 @@ String buildPackageTestScopeId(String? packagePath, List<String> groupPath) {
   return 'group:$scopeRoot::${groupPath.join("::")}';
 }
 
+/// Extracts the normalized group path from a live `package:test` object.
 List<String> extractPackageTestGroupPath(dynamic liveTest) {
   final rawGroups = (liveTest.groups as List<dynamic>? ?? const <dynamic>[])
       .map((group) => _maybe<String>(() => group.name)?.toString() ?? '')
@@ -177,6 +209,7 @@ List<String> extractPackageTestGroupPath(dynamic liveTest) {
   return segments;
 }
 
+/// Extracts the package-relative file path from a live test and location.
 String? extractPackageTestPath(dynamic liveTest, dynamic location) {
   final uri = _maybe<Uri>(() => location.uri);
   if (uri == null) {
@@ -189,6 +222,7 @@ String? extractPackageTestPath(dynamic liveTest, dynamic location) {
   return packageTestPathFromUri(uri);
 }
 
+/// Normalizes package test tags from a string, iterable, or null value.
 List<String> normalizePackageTestTags(Object? tags) {
   if (tags == null) {
     return const <String>[];
@@ -202,6 +236,7 @@ List<String> normalizePackageTestTags(Object? tags) {
   return const <String>[];
 }
 
+/// Resolves a package test path from declaration metadata or a stack trace.
 String? resolvePackageTestPathFromDeclaration({
   Uri? locationUri,
   StackTrace? stackTrace,
@@ -232,6 +267,7 @@ String? resolvePackageTestPathFromDeclaration({
   return null;
 }
 
+/// Converts a URI to a package-relative test path when possible.
 String? packageTestPathFromUri(Uri? uri) {
   if (uri == null) {
     return null;
@@ -262,7 +298,9 @@ T? _maybe<T>(T Function() getter) {
   }
 }
 
+/// Metadata extracted from inline Allure annotations in text.
 class ExtractedMetadata {
+  /// Creates extracted metadata.
   const ExtractedMetadata({
     required this.cleanName,
     this.allureId,
@@ -271,13 +309,23 @@ class ExtractedMetadata {
     this.links = const <AllureLink>[],
   });
 
+  /// Text with Allure annotations removed.
   final String cleanName;
+
+  /// Parsed Allure id, when present.
   final String? allureId;
+
+  /// Parsed display name override, when present.
   final String? displayName;
+
+  /// Parsed Allure labels.
   final List<AllureLabel> labels;
+
+  /// Parsed Allure links.
   final List<AllureLink> links;
 }
 
+/// Extracts Allure metadata annotations from [text].
 ExtractedMetadata extractMetadataFromString(String text) {
   final labels = <AllureLabel>[];
   final links = <AllureLink>[];
@@ -323,19 +371,28 @@ ExtractedMetadata extractMetadataFromString(String text) {
   );
 }
 
+/// Single entry in an Allure test plan.
 class TestPlanEntry {
+  /// Creates a test plan entry.
   const TestPlanEntry({this.id, this.selector});
 
+  /// Optional Allure id to match.
   final Object? id;
+
+  /// Optional full-name or native selector to match.
   final String? selector;
 }
 
+/// Parsed Allure test plan version 1.
 class TestPlanV1 {
+  /// Creates a test plan.
   const TestPlanV1({required this.tests});
 
+  /// Entries included in the test plan.
   final List<TestPlanEntry> tests;
 }
 
+/// Parses an Allure test plan from `ALLURE_TESTPLAN_PATH`.
 TestPlanV1? parseTestPlan([Map<String, String>? environment]) {
   final source = environment ?? Platform.environment;
   final path = source['ALLURE_TESTPLAN_PATH'];
@@ -393,6 +450,7 @@ TestPlanV1? parseTestPlan([Map<String, String>? environment]) {
   }
 }
 
+/// Whether a test identified by id, selector, or tags is included in [plan].
 bool includedInTestPlan(
   TestPlanV1 plan, {
   String? id,
@@ -419,10 +477,12 @@ bool includedInTestPlan(
   return false;
 }
 
+/// Extracts an Allure id from tag expressions.
 String? extractAllureIdFromTags(Iterable<String>? tags) {
   return _extractAllureIdFromTags(tags);
 }
 
+/// Adds the Allure test-plan skip marker to [labels].
 void addSkipLabel(List<AllureLabel> labels) {
   labels.add(const AllureLabel(name: allureTestPlanSkipLabel, value: 'true'));
 }

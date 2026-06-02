@@ -5,6 +5,7 @@ import 'runtime.dart';
 const Symbol _allureRootUuidKey = #allure.rootUuid;
 const Symbol _allureTestUuidKey = #allure.testUuid;
 
+/// Returns the Allure execution context stored in the current [Zone].
 AllureExecutionContext? getZoneExecutionContext() {
   final rootUuid = Zone.current[_allureRootUuidKey] as String?;
   if (rootUuid == null) {
@@ -14,6 +15,7 @@ AllureExecutionContext? getZoneExecutionContext() {
   return AllureExecutionContext(rootUuid: rootUuid, testUuid: testUuid);
 }
 
+/// Runs [body] in a zone that carries the current Allure execution ids.
 T runWithAllureContext<T>({
   required String rootUuid,
   required String testUuid,
