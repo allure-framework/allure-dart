@@ -12,6 +12,7 @@ AllureTestRuntimePlugin _ensureAllureInstalled() {
   return AllureTestRuntimePlugin.ensureInstalled();
 }
 
+/// Drop-in replacement for `package:test`'s `test` with Allure reporting.
 void test(
   Object? description,
   FutureOr<dynamic> Function() body, {
@@ -66,6 +67,7 @@ void test(
   );
 }
 
+/// Drop-in replacement for `package:test`'s `group` with Allure reporting.
 void group(
   Object? description,
   dynamic Function() body, {
@@ -108,16 +110,19 @@ void group(
   );
 }
 
+/// Registers a setup callback as an Allure fixture.
 void setUp(FutureOr<dynamic> Function() callback) {
   final plugin = _ensureAllureInstalled();
   t.setUp(plugin.wrapSetUp(callback));
 }
 
+/// Registers a teardown callback as an Allure fixture.
 void tearDown(FutureOr<dynamic> Function() callback) {
   final plugin = _ensureAllureInstalled();
   t.tearDown(plugin.wrapTearDown(callback));
 }
 
+/// Registers a group-level setup callback as an Allure fixture.
 void setUpAll(
   FutureOr<dynamic> Function() callback, {
   t.TestLocation? location,
@@ -139,6 +144,7 @@ void setUpAll(
   );
 }
 
+/// Registers a group-level teardown callback as an Allure fixture.
 void tearDownAll(
   FutureOr<dynamic> Function() callback, {
   t.TestLocation? location,

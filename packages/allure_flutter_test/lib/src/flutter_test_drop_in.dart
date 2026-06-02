@@ -17,6 +17,7 @@ AllureTestRuntimePlugin _ensureAllureInstalled() {
   return AllureTestRuntimePlugin.ensureInstalled();
 }
 
+/// Drop-in replacement for `flutter_test`'s `test` with Allure reporting.
 void test(
   Object? description,
   dynamic Function() body, {
@@ -69,6 +70,7 @@ void test(
   );
 }
 
+/// Drop-in replacement for `flutter_test`'s `group` with Allure reporting.
 void group(
   Object? description,
   dynamic Function() body, {
@@ -99,16 +101,19 @@ void group(
   );
 }
 
+/// Registers a setup callback as an Allure fixture.
 void setUp(FutureOr<dynamic> Function() callback) {
   final plugin = _ensureAllureInstalled();
   ft.setUp(plugin.wrapSetUp(callback));
 }
 
+/// Registers a teardown callback as an Allure fixture.
 void tearDown(FutureOr<dynamic> Function() callback) {
   final plugin = _ensureAllureInstalled();
   ft.tearDown(plugin.wrapTearDown(callback));
 }
 
+/// Registers a group-level setup callback as an Allure fixture.
 void setUpAll(FutureOr<dynamic> Function() callback) {
   final plugin = _ensureAllureInstalled();
   final groupPath = PackageTestScopeRegistry.instance.currentPath;
@@ -126,6 +131,7 @@ void setUpAll(FutureOr<dynamic> Function() callback) {
   );
 }
 
+/// Registers a group-level teardown callback as an Allure fixture.
 void tearDownAll(FutureOr<dynamic> Function() callback) {
   final plugin = _ensureAllureInstalled();
   final groupPath = PackageTestScopeRegistry.instance.currentPath;
@@ -143,6 +149,7 @@ void tearDownAll(FutureOr<dynamic> Function() callback) {
   );
 }
 
+/// Drop-in replacement for `flutter_test`'s `testWidgets` with Allure reporting.
 void testWidgets(
   String description,
   ft.WidgetTesterCallback callback, {

@@ -8,7 +8,9 @@ import 'package:uuid/uuid.dart';
 import 'model.dart';
 import 'utils.dart';
 
+/// Prepared attachment file paths reserved before content is written.
 class AllurePreparedAttachment {
+  /// Creates prepared attachment metadata.
   const AllurePreparedAttachment({
     required this.name,
     required this.source,
@@ -17,16 +19,25 @@ class AllurePreparedAttachment {
     this.type,
   });
 
+  /// Display name of the attachment.
   final String name;
+
+  /// Final attachment file name inside the results directory.
   final String source;
 
   /// Temporary filesystem path the producer must write.
   final String path;
+
+  /// Final filesystem path where the attachment will be moved.
   final String finalPath;
+
+  /// MIME type of the attachment, when known.
   final String? type;
 }
 
+/// Writes Allure result files and attachments to a results directory.
 class AllureResultsWriter {
+  /// Creates a writer for [outputDirectory] or `ALLURE_RESULTS_DIR`.
   AllureResultsWriter({
     String? outputDirectory,
     Uuid? uuid,
@@ -40,12 +51,14 @@ class AllureResultsWriter {
   final Directory _outputDirectory;
   final Uuid _uuid;
 
+  /// Ensures the output directory exists.
   Future<void> ensureInitialized() async {
     if (!_outputDirectory.existsSync()) {
       await _outputDirectory.create(recursive: true);
     }
   }
 
+  /// Writes a test result JSON file.
   Future<void> writeTestResult(AllureTestResult result) async {
     await ensureInitialized();
     final file =
@@ -56,6 +69,7 @@ class AllureResultsWriter {
     );
   }
 
+  /// Writes a test result container JSON file.
   Future<void> writeContainer(AllureTestResultContainer container) async {
     await ensureInitialized();
     final file =
@@ -66,6 +80,7 @@ class AllureResultsWriter {
     );
   }
 
+  /// Writes an attachment from in-memory [content].
   Future<AllureAttachment> writeAttachment({
     required String name,
     required List<int> content,
@@ -90,6 +105,7 @@ class AllureResultsWriter {
     );
   }
 
+  /// Writes an attachment by reading bytes from [path].
   Future<AllureAttachment> writeAttachmentFromPath({
     required String name,
     required String path,
@@ -107,6 +123,7 @@ class AllureResultsWriter {
     );
   }
 
+  /// Reserves temporary and final paths for a streamed or custom attachment.
   Future<AllurePreparedAttachment> prepareAttachment({
     required String name,
     String? type,
@@ -131,6 +148,7 @@ class AllureResultsWriter {
     );
   }
 
+  /// Writes content into a prepared attachment and publishes it atomically.
   Future<AllureAttachment> writePreparedAttachment(
     AllurePreparedAttachment prepared,
     Future<void> Function(String path) write,
@@ -149,6 +167,7 @@ class AllureResultsWriter {
     );
   }
 
+  /// Writes an attachment from a byte stream.
   Future<AllureAttachment> writeAttachmentStream({
     required String name,
     required Stream<List<int>> content,
@@ -178,6 +197,7 @@ class AllureResultsWriter {
     );
   }
 
+  /// Writes run-level global data.
   Future<void> writeGlobals(AllureGlobals globals) async {
     await ensureInitialized();
     final file =
@@ -188,12 +208,14 @@ class AllureResultsWriter {
     );
   }
 
+  /// Writes Allure environment properties.
   Future<void> writeEnvironmentInfo(AllureEnvironmentInfo info) async {
     await ensureInitialized();
     final file = File(p.join(_outputDirectory.path, 'environment.properties'));
     await _writeStringAtomically(file, stringifyEnvironmentInfo(info));
   }
 
+  /// Writes Allure category definitions.
   Future<void> writeCategoriesDefinitions(
     List<AllureCategory> categories,
   ) async {
@@ -207,6 +229,7 @@ class AllureResultsWriter {
     );
   }
 
+  /// Writes Allure executor metadata.
   Future<void> writeExecutorInfo(AllureExecutorInfo info) async {
     await ensureInitialized();
     final file = File(p.join(_outputDirectory.path, 'executor.json'));

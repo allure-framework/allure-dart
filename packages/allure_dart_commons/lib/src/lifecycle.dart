@@ -9,25 +9,54 @@ import 'runtime.dart';
 import 'utils.dart';
 import 'writer.dart';
 
+/// Listener hooks for observing Allure lifecycle events.
 class AllureLifecycleListener {
+  /// Creates a lifecycle listener with no-op hooks.
   const AllureLifecycleListener();
 
+  /// Called before a test result is stored in the lifecycle.
   void beforeTestStart(AllureTestResult result) {}
+
+  /// Called after a test result is stored in the lifecycle.
   void afterTestStart(AllureTestResult result) {}
+
+  /// Called before a test result is stopped.
   void beforeTestStop(AllureTestResult result) {}
+
+  /// Called after a test result is stopped.
   void afterTestStop(AllureTestResult result) {}
+
+  /// Called before a test result is written.
   void beforeTestWrite(AllureTestResult result) {}
+
+  /// Called after a test result is written.
   void afterTestWrite(AllureTestResult result) {}
+
+  /// Called before a step result is stopped.
   void beforeStepStop(AllureStepResult result) {}
+
+  /// Called after a step result is stopped.
   void afterStepStop(AllureStepResult result) {}
+
+  /// Called before a container result is written.
   void beforeContainerWrite(AllureTestResultContainer container) {}
+
+  /// Called after a container result is written.
   void afterContainerWrite(AllureTestResultContainer container) {}
+
+  /// Called when an attachment is added to a test, fixture, or step.
   void onAttachment(String rootUuid, AllureAttachment attachment) {}
+
+  /// Called when a run-level attachment is written.
   void onGlobalAttachment(AllureGlobalAttachment attachment) {}
+
+  /// Called when a run-level error is written.
   void onGlobalError(AllureGlobalError error) {}
 }
 
+/// Mutable Allure lifecycle used to build and write result files.
 class AllureLifecycle implements AllureRuntimeMessageSink {
+  /// Creates an Allure lifecycle with optional writer and run metadata.
   AllureLifecycle({
     AllureResultsWriter? writer,
     Uuid? uuid,
@@ -66,6 +95,7 @@ class AllureLifecycle implements AllureRuntimeMessageSink {
 
   bool _runMetadataWritten = false;
 
+  /// Ensures that a result container scope exists and returns its id.
   String ensureScope({
     required String id,
     String? name,
@@ -84,6 +114,7 @@ class AllureLifecycle implements AllureRuntimeMessageSink {
     return scope.id;
   }
 
+  /// Sets the expected number of child tests for a scope.
   void setScopeExpectedChildren(String scopeId, int expectedChildrenCount) {
     final scope = _scopes.putIfAbsent(
       scopeId,
@@ -92,6 +123,7 @@ class AllureLifecycle implements AllureRuntimeMessageSink {
     scope.expectedChildrenCount = expectedChildrenCount;
   }
 
+  /// Links an existing test result to a lifecycle scope.
   void lifecycleLinkTest({
     required String scopeId,
     required String testUuid,
@@ -109,6 +141,7 @@ class AllureLifecycle implements AllureRuntimeMessageSink {
     }
   }
 
+  /// Starts a test result and returns its generated UUID.
   String startTest({
     required String name,
     String? fullName,
@@ -162,6 +195,7 @@ class AllureLifecycle implements AllureRuntimeMessageSink {
     return uuid;
   }
 
+  /// Schedules a test case using the same result creation path as [startTest].
   String scheduleTestCase({
     required String name,
     String? fullName,
@@ -180,6 +214,7 @@ class AllureLifecycle implements AllureRuntimeMessageSink {
     );
   }
 
+  /// Applies an in-place update to a started test result.
   void updateTest(
       String testUuid, void Function(AllureTestResult result) update) {
     final state = _tests[testUuid];
@@ -189,6 +224,7 @@ class AllureLifecycle implements AllureRuntimeMessageSink {
     update(state.result);
   }
 
+  /// Stops a test result and resolves final status, details, and timing.
   Future<void> stopTest(
     String testUuid, {
     AllureStatus? status,
@@ -255,6 +291,7 @@ class AllureLifecycle implements AllureRuntimeMessageSink {
     _notify('afterTestStop', (listener) => listener.afterTestStop(result));
   }
 
+  /// Writes a stopped test result and updates linked scope completion.
   Future<void> writeTest(String testUuid) async {
     final state = _tests.remove(testUuid);
     if (state == null) {
@@ -286,6 +323,7 @@ class AllureLifecycle implements AllureRuntimeMessageSink {
     }
   }
 
+  /// Stops and writes a test case using a serialized status value.
   Future<void> finishTestCase(
     String testUuid, {
     required String status,
@@ -303,6 +341,7 @@ class AllureLifecycle implements AllureRuntimeMessageSink {
     await writeTest(testUuid);
   }
 
+  /// Starts a setup or teardown fixture in a scope and returns its UUID.
   String startFixture({
     required String scopeId,
     required bool before,
@@ -330,6 +369,7 @@ class AllureLifecycle implements AllureRuntimeMessageSink {
     return uuid;
   }
 
+  /// Stops a setup or teardown fixture and records it on its scope.
   Future<void> stopFixture(
     String fixtureUuid, {
     AllureStatus? status,
@@ -385,6 +425,7 @@ class AllureLifecycle implements AllureRuntimeMessageSink {
     await flushScopeIfComplete(fixture.scopeId);
   }
 
+  /// Writes completed fixture containers for a scope.
   Future<void> writeScope(String scopeId) async {
     final scope = _scopes[scopeId];
     if (scope == null || scope.children.isEmpty) {
@@ -422,6 +463,7 @@ class AllureLifecycle implements AllureRuntimeMessageSink {
     }
   }
 
+  /// Writes a scope when its expected child count has completed.
   Future<void> flushScopeIfComplete(String scopeId) async {
     final scope = _scopes[scopeId];
     if (scope == null) {
@@ -434,6 +476,7 @@ class AllureLifecycle implements AllureRuntimeMessageSink {
     await writeScope(scopeId);
   }
 
+  /// Starts a step under a test, fixture, or active parent step.
   void startStep(
     String rootUuid,
     String name, {
@@ -460,6 +503,7 @@ class AllureLifecycle implements AllureRuntimeMessageSink {
     stack.add(step);
   }
 
+  /// Updates metadata for the currently running step under [rootUuid].
   void updateCurrentStep(
     String rootUuid, {
     String? name,
@@ -476,6 +520,7 @@ class AllureLifecycle implements AllureRuntimeMessageSink {
     step.parameters.addAll(parameters);
   }
 
+  /// Stops the currently running step under [rootUuid].
   void stopStep(
     String rootUuid, {
     AllureStatus? status,
@@ -507,6 +552,7 @@ class AllureLifecycle implements AllureRuntimeMessageSink {
     _notify('afterStepStop', (listener) => listener.afterStepStop(step));
   }
 
+  /// Runs [body] inside a step and records pass or failure status.
   Future<T> runStep<T>(
     String testUuid,
     String name,
@@ -527,6 +573,7 @@ class AllureLifecycle implements AllureRuntimeMessageSink {
     }
   }
 
+  /// Adds an in-memory attachment to a test result.
   Future<void> addAttachment({
     required String testUuid,
     required String name,
@@ -547,6 +594,7 @@ class AllureLifecycle implements AllureRuntimeMessageSink {
     );
   }
 
+  /// Adds a text attachment to a test result.
   Future<void> addTextAttachment({
     required String testUuid,
     required String name,
@@ -567,6 +615,7 @@ class AllureLifecycle implements AllureRuntimeMessageSink {
     );
   }
 
+  /// Adds an in-memory attachment to any root result.
   Future<void> addAttachmentToRoot(
     String rootUuid, {
     required String name,
@@ -590,6 +639,7 @@ class AllureLifecycle implements AllureRuntimeMessageSink {
     );
   }
 
+  /// Adds an attachment from a filesystem path to any root result.
   Future<void> addAttachmentPathToRoot(
     String rootUuid, {
     required String name,
@@ -613,6 +663,7 @@ class AllureLifecycle implements AllureRuntimeMessageSink {
     );
   }
 
+  /// Adds an attachment from a byte stream to any root result.
   Future<void> addAttachmentStreamToRoot(
     String rootUuid, {
     required String name,
@@ -636,6 +687,7 @@ class AllureLifecycle implements AllureRuntimeMessageSink {
     );
   }
 
+  /// Adds an attachment written through a prepared temporary file.
   Future<void> addPreparedAttachmentToRoot(
     String rootUuid, {
     required String name,
@@ -662,6 +714,7 @@ class AllureLifecycle implements AllureRuntimeMessageSink {
     );
   }
 
+  /// Adds a label directly to a started test result.
   void addLabel(String testUuid, AllureLabel label) {
     final state = _tests[testUuid];
     if (state == null) {
@@ -670,6 +723,7 @@ class AllureLifecycle implements AllureRuntimeMessageSink {
     state.result.labels.add(label);
   }
 
+  /// Writes a run-level attachment from in-memory bytes.
   Future<void> writeGlobalAttachment({
     required String name,
     required List<int> content,
@@ -701,6 +755,7 @@ class AllureLifecycle implements AllureRuntimeMessageSink {
     );
   }
 
+  /// Writes a run-level attachment from a filesystem path.
   Future<void> writeGlobalAttachmentFromPath({
     required String name,
     required String path,
@@ -732,6 +787,7 @@ class AllureLifecycle implements AllureRuntimeMessageSink {
     );
   }
 
+  /// Writes a run-level error entry.
   Future<void> writeGlobalError(AllureStatusDetails details) async {
     await _ensureRunMetadataWritten();
     final error = AllureGlobalError(
@@ -1054,6 +1110,7 @@ class AllureLifecycle implements AllureRuntimeMessageSink {
     test.result.parameters.addAll(parameters);
   }
 
+  /// Handles runtime messages produced by top-level Allure APIs.
   @override
   Future<void> handleRuntimeMessage(
     RuntimeMessage message, {

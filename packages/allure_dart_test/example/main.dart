@@ -1,3 +1,4 @@
+// Import Allure's package:test adapter to get reporting helpers in the test body.
 import 'package:allure_dart_test/allure_dart_test.dart';
 
 void main() {
