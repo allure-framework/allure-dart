@@ -1,0 +1,30 @@
+version: 2
+
+updates:
+  - package-ecosystem: "pub"
+    directories:
+      - "/"
+      - "/packages/allure_dart_commons"
+      - "/packages/allure_dart_test"
+      - "/packages/allure_flutter_test"
+    schedule:
+      interval: "daily"
+    cooldown:
+      default-days: 7
+    labels:
+      - "pr:dependencies"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "daily"
+    cooldown:
+      default-days: 7
+    labels:
+      - "pr:dependencies"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
