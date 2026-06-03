@@ -62,7 +62,6 @@ jobs:
     uses: dart-lang/setup-dart/.github/workflows/publish.yml@v1
     with:
       working-directory: packages/allure_dart_commons
-      environment: pub.dev
 
   publish-dart-test:
     name: Publish allure_dart_test
@@ -74,7 +73,6 @@ jobs:
     uses: dart-lang/setup-dart/.github/workflows/publish.yml@v1
     with:
       working-directory: packages/allure_dart_test
-      environment: pub.dev
 
   publish-flutter-test:
     name: Publish allure_flutter_test
@@ -86,4 +84,3 @@ jobs:
     uses: dart-lang/setup-dart/.github/workflows/publish.yml@v1
     with:
       working-directory: packages/allure_flutter_test
-      environment: pub.dev
