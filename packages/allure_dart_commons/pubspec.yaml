@@ -1,6 +1,6 @@
 name: allure_dart_commons
 description: Framework-agnostic Allure lifecycle and result primitives for Dart.
-version: 1.0.0
+version: 1.1.0
 homepage: https://github.com/allure-framework/allure-dart
 repository: https://github.com/allure-framework/allure-dart
 issue_tracker: https://github.com/allure-framework/allure-dart/issues
@@ -16,6 +16,6 @@ dependencies:
   uuid: ^4.5.1
 
 dev_dependencies:
-  allure_dart_test: ^1.0.0
+  allure_dart_test: ^1.1.0
   lints: ^5.1.1
   test: ^1.25.0
