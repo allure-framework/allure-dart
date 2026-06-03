@@ -119,6 +119,40 @@ jobs:
             packages/allure_dart_commons/pubspec.yaml \
             packages/allure_flutter_test/pubspec.yaml
 
+          for changelog in packages/*/CHANGELOG.md; do
+            if grep -Fq "## ${version}" "${changelog}"; then
+              continue
+            fi
+
+            existing="$(mktemp)"
+            awk '
+              NR == 1 && $0 == "# Changelog" {
+                skipped_heading = 1
+                next
+              }
+              skipped_heading && !emitted && $0 == "" {
+                next
+              }
+              {
+                emitted = 1
+                print
+              }
+            ' "${changelog}" > "${existing}"
+
+            {
+              printf '# Changelog\n\n'
+              printf '## %s\n\n' "${version}"
+              printf 'This package is released from the `allure-dart` monorepo.\n\n'
+              printf 'Release notes are maintained centrally in the repository releases:\n'
+              printf 'https://github.com/allure-framework/allure-dart/releases\n'
+              if [ -s "${existing}" ]; then
+                printf '\n'
+                cat "${existing}"
+              fi
+            } > "${changelog}"
+            rm -f "${existing}"
+          done
+
           for pubspec in \
             packages/allure_dart_commons/pubspec.yaml \
             packages/allure_dart_test/pubspec.yaml \
@@ -126,12 +160,16 @@ jobs:
             grep -Fxq "version: ${version}" "${pubspec}"
           done
 
+          for changelog in packages/*/CHANGELOG.md; do
+            grep -Fq "## ${version}" "${changelog}"
+          done
+
           grep -Fq "allure_dart_commons: ^${version}" packages/allure_dart_test/pubspec.yaml
           grep -Fq "allure_dart_commons: ^${version}" packages/allure_flutter_test/pubspec.yaml
           grep -Fq "allure_dart_test: ^${version}" packages/allure_dart_commons/pubspec.yaml
           grep -Fq "allure_dart_test: ^${version}" packages/allure_flutter_test/pubspec.yaml
 
-          git diff -- packages/*/pubspec.yaml
+          git diff -- packages/*/pubspec.yaml packages/*/CHANGELOG.md
 
       - name: Commit release version
         shell: bash
@@ -139,10 +177,10 @@ jobs:
           set -euo pipefail
           version="${{ inputs.version }}"
 
-          if git diff --quiet -- packages/*/pubspec.yaml; then
+          if git diff --quiet -- packages/*/pubspec.yaml packages/*/CHANGELOG.md; then
             echo "Package versions already match ${version}; using the current commit."
           else
-            git add packages/*/pubspec.yaml
+            git add packages/*/pubspec.yaml packages/*/CHANGELOG.md
             git commit -m "release ${version}"
           fi
 
