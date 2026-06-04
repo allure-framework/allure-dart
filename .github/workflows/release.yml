@@ -18,6 +18,7 @@ jobs:
   release:
     name: Release
     runs-on: ubuntu-latest
+    timeout-minutes: 120
     permissions:
       contents: write
 
@@ -184,57 +185,103 @@ jobs:
             git commit -m "release ${version}"
           fi
 
-      - name: Create package tags
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Push release commit
         shell: bash
         run: |
           set -euo pipefail
-          version="${{ inputs.version }}"
-          release_tag="v${version}"
-          packages=(
-            allure_dart_commons
-            allure_dart_test
-            allure_flutter_test
-          )
-
-          git tag "${release_tag}"
-          for package in "${packages[@]}"; do
-            git tag "${package}-v${version}"
-          done
-
-      - name: Push release commit and tags
-        shell: bash
-        run: |
-          set -euo pipefail
-          version="${{ inputs.version }}"
-          packages=(
-            allure_dart_commons
-            allure_dart_test
-            allure_flutter_test
-          )
-
-          wait_for_pub_version() {
-            local package="$1"
-            local attempt
-
-            for attempt in {1..60}; do
-              if curl -fsSL "https://pub.dev/api/packages/${package}" 2>/dev/null | grep -q "\"version\":\"${version}\""; then
-                echo "${package} ${version} is available on pub.dev."
-                return 0
-              fi
-
-              echo "Waiting for ${package} ${version} to appear on pub.dev (${attempt}/60)."
-              sleep 30
-            done
-
-            echo "${package} ${version} did not appear on pub.dev in time." >&2
-            return 1
-          }
-
           git push origin "HEAD:${{ github.ref_name }}"
-          for package in "${packages[@]}"; do
-            git push origin "${package}-v${version}"
-            wait_for_pub_version "${package}"
+
+      - name: Push commons package tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${{ inputs.version }}"
+          git tag "allure_dart_commons-v${version}"
+          git push origin "allure_dart_commons-v${version}"
+
+      - name: Wait for commons package to resolve
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${{ inputs.version }}"
+          tmp_dir="$(mktemp -d)"
+          output="${tmp_dir}/pub-get.log"
+          trap 'rm -rf "${tmp_dir}"' EXIT
+
+          scripts/write-allure-dart-resolution-pubspec.sh "${version}" commons "${tmp_dir}/pubspec.yaml"
+
+          for attempt in {1..60}; do
+            echo "::group::Attempt ${attempt}/60: resolve allure_dart_commons ${version}"
+            if (cd "${tmp_dir}" && dart pub get > "${output}" 2>&1); then
+              echo "allure_dart_commons ${version} resolves with dart pub get."
+              echo "::endgroup::"
+              exit 0
+            fi
+
+            echo "Waiting for allure_dart_commons ${version} to resolve with dart pub get (${attempt}/60)."
+            head -40 "${output}" || true
+            echo "::endgroup::"
+            sleep 30
           done
+
+          echo "allure_dart_commons ${version} did not resolve with dart pub get in time." >&2
+          exit 1
+
+      - name: Push package:test adapter tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${{ inputs.version }}"
+          git tag "allure_dart_test-v${version}"
+          git push origin "allure_dart_test-v${version}"
+
+      - name: Wait for Dart packages to resolve
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${{ inputs.version }}"
+          tmp_dir="$(mktemp -d)"
+          output="${tmp_dir}/pub-get.log"
+          trap 'rm -rf "${tmp_dir}"' EXIT
+
+          scripts/write-allure-dart-resolution-pubspec.sh "${version}" dart-test "${tmp_dir}/pubspec.yaml"
+
+          for attempt in {1..60}; do
+            echo "::group::Attempt ${attempt}/60: resolve allure_dart_commons and allure_dart_test ${version}"
+            if (cd "${tmp_dir}" && dart pub get > "${output}" 2>&1); then
+              echo "allure_dart_commons and allure_dart_test ${version} resolve with dart pub get."
+              echo "::endgroup::"
+              exit 0
+            fi
+
+            echo "Waiting for allure_dart_commons and allure_dart_test ${version} to resolve with dart pub get (${attempt}/60)."
+            head -40 "${output}" || true
+            echo "::endgroup::"
+            sleep 30
+          done
+
+          echo "allure_dart_commons and allure_dart_test ${version} did not resolve with dart pub get in time." >&2
+          exit 1
+
+      - name: Push Flutter adapter tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${{ inputs.version }}"
+          git tag "allure_flutter_test-v${version}"
+          git push origin "allure_flutter_test-v${version}"
+
+      - name: Push release tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${{ inputs.version }}"
+          git tag "v${version}"
           git push origin "v${version}"
 
       - name: Publish GitHub release
