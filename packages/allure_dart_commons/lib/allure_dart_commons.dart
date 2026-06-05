@@ -2,6 +2,7 @@
 library;
 
 export 'src/context.dart';
+export 'src/config.dart';
 export 'src/lifecycle.dart';
 export 'src/model.dart';
 export 'src/runtime.dart';

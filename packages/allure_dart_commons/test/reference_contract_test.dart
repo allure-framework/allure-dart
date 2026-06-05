@@ -13,6 +13,59 @@ void main() {
   installAllure();
 
   group('reference parity helpers', () {
+    test('derives suite labels from title path hierarchy', () async {
+      await description('''
+Verifies that generated suite labels follow the Allure hierarchy convention used by sibling adapters.
+
+One title path segment should become `suite`, two segments should become `parentSuite` and `suite`, and deeper paths should join remaining segments into `subSuite` with the historical ` > ` separator.
+''');
+
+      late Map<String, List<String>> generated;
+
+      await step('Generate suite labels for title path shapes', (_) async {
+        generated = <String, List<String>>{
+          'single': _labelPairs(getSuiteLabels(<String>['test/file.dart'])),
+          'two': _labelPairs(
+            getSuiteLabels(<String>['test/file.dart', 'parent group']),
+          ),
+          'long': _labelPairs(
+            getSuiteLabels(
+              <String>['test/file.dart', 'parent group', 'child', 'case'],
+            ),
+          ),
+        };
+        await attachment(
+          'generated suite labels',
+          const JsonEncoder.withIndent('  ').convert(generated),
+          contentType: 'application/json',
+          fileExtension: 'json',
+        );
+      });
+
+      await _verifyValue(
+        'Verify single segment suite label',
+        expected: <String>['suite=test/file.dart'],
+        actual: generated['single'],
+      );
+      await _verifyValue(
+        'Verify two segment suite labels',
+        expected: <String>[
+          'parentSuite=test/file.dart',
+          'suite=parent group',
+        ],
+        actual: generated['two'],
+      );
+      await _verifyValue(
+        'Verify long title path subSuite delimiter',
+        expected: <String>[
+          'parentSuite=test/file.dart',
+          'suite=parent group',
+          'subSuite=child > case',
+        ],
+        actual: generated['long'],
+      );
+    });
+
     test('derives testCaseId and historyId from sorted non-excluded parameters',
         () async {
       await description('''
@@ -866,6 +919,10 @@ Future<void> _verifyContains(
     );
     expect(found, isTrue);
   });
+}
+
+List<String> _labelPairs(Iterable<AllureLabel> labels) {
+  return labels.map((label) => '${label.name}=${label.value}').toList();
 }
 
 String _contentTypeForArtifact(File file) {

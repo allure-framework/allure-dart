@@ -14,6 +14,7 @@ dependencies:
   mime: ^2.0.0
   path: ^1.9.0
   uuid: ^4.5.1
+  yaml: ^3.1.3
 
 dev_dependencies:
   allure_dart_test: ^1.1.0

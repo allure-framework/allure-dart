@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:uuid/uuid.dart';
 
+import 'config.dart';
 import 'model.dart';
 import 'utils.dart';
 
@@ -41,9 +42,11 @@ class AllureResultsWriter {
   AllureResultsWriter({
     String? outputDirectory,
     Uuid? uuid,
+    AllureConfig? config,
   })  : _outputDirectory = Directory(
           outputDirectory ??
               Platform.environment['ALLURE_RESULTS_DIR'] ??
+              (config ?? AllureConfig.load()).resultsDirectory ??
               'allure-results',
         ),
         _uuid = uuid ?? const Uuid();

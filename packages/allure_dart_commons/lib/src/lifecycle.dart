@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:uuid/uuid.dart';
 
+import 'config.dart';
 import 'model.dart';
 import 'runtime.dart';
 import 'utils.dart';
@@ -57,8 +58,40 @@ class AllureLifecycleListener {
 /// Mutable Allure lifecycle used to build and write result files.
 class AllureLifecycle implements AllureRuntimeMessageSink {
   /// Creates an Allure lifecycle with optional writer and run metadata.
-  AllureLifecycle({
+  factory AllureLifecycle({
     AllureResultsWriter? writer,
+    Uuid? uuid,
+    AllureConfig? config,
+    Map<String, String>? linkUrlTemplates,
+    Map<String, String>? linkNameTemplates,
+    List<AllureLabel>? globalLabels,
+    AllureEnvironmentInfo? environmentInfo,
+    List<AllureCategory>? categories,
+    AllureExecutorInfo? executorInfo,
+    List<AllureLifecycleListener>? listeners,
+  }) {
+    final resolvedConfig = config ?? AllureConfig.load();
+    return AllureLifecycle._(
+      writer: writer ?? AllureResultsWriter(uuid: uuid, config: resolvedConfig),
+      uuid: uuid,
+      linkUrlTemplates: linkUrlTemplates,
+      linkNameTemplates: linkNameTemplates,
+      globalLabels: <AllureLabel>[
+        ...resolvedConfig.globalLabels,
+        ...?globalLabels,
+      ],
+      environmentInfo: <String, String?>{
+        ...resolvedConfig.environmentInfo,
+        ...?environmentInfo,
+      },
+      categories: categories,
+      executorInfo: executorInfo,
+      listeners: listeners,
+    );
+  }
+
+  AllureLifecycle._({
+    required AllureResultsWriter writer,
     Uuid? uuid,
     Map<String, String>? linkUrlTemplates,
     Map<String, String>? linkNameTemplates,
@@ -67,7 +100,7 @@ class AllureLifecycle implements AllureRuntimeMessageSink {
     List<AllureCategory>? categories,
     AllureExecutorInfo? executorInfo,
     List<AllureLifecycleListener>? listeners,
-  })  : _writer = writer ?? AllureResultsWriter(uuid: uuid),
+  })  : _writer = writer,
         _uuid = uuid ?? const Uuid(),
         _linkUrlTemplates = linkUrlTemplates ?? const <String, String>{},
         _linkNameTemplates = linkNameTemplates ?? const <String, String>{},

@@ -64,3 +64,21 @@ allureTest('captures logs', (allure) async {
 
 Runtime and in-test attachment APIs add attachments as attachment steps by
 default so they keep their logical position between surrounding steps.
+
+## Configuration
+
+The adapter loads `allure-dart.yaml` or `allure-dart.yml` from the current
+package tree. Use it for checked-in local defaults such as module labels:
+
+```yaml
+resultsDir: build/allure-results
+labels:
+  module: checkout
+  layer:
+    - api
+environment:
+  target: local
+```
+
+`ALLURE_RESULTS_DIR` overrides `resultsDir`, and `ALLURE_CONFIG` can point to an
+explicit config file.

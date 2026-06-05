@@ -160,7 +160,7 @@ List<AllureLabel> getSuiteLabels(List<String> suites) {
   return <AllureLabel>[
     AllureLabel(name: 'parentSuite', value: suites.first),
     AllureLabel(name: 'suite', value: suites[1]),
-    AllureLabel(name: 'subSuite', value: suites.skip(2).join(' / ')),
+    AllureLabel(name: 'subSuite', value: suites.skip(2).join(' > ')),
   ];
 }
 

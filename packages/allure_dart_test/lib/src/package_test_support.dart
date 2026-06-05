@@ -217,7 +217,7 @@ String? extractPackageTestPath(dynamic liveTest, dynamic location) {
     if (suitePath == null || suitePath.isEmpty) {
       return null;
     }
-    return getRelativePath(suitePath);
+    return packageTestPathFromFilePath(suitePath);
   }
   return packageTestPathFromUri(uri);
 }
@@ -273,10 +273,34 @@ String? packageTestPathFromUri(Uri? uri) {
     return null;
   }
   if (uri.scheme == 'file') {
-    return getRelativePath(uri.toFilePath());
+    return packageTestPathFromFilePath(uri.toFilePath());
   }
   final serialized = uri.toString();
   return serialized.isEmpty ? null : serialized;
+}
+
+/// Converts a file path to a package-root-relative path when possible.
+String packageTestPathFromFilePath(String filePath) {
+  final absoluteFilePath = p.normalize(p.absolute(filePath));
+  final packageRoot = _findPackageRoot(absoluteFilePath);
+  if (packageRoot == null) {
+    return getRelativePath(filePath);
+  }
+  return getPosixPath(p.relative(absoluteFilePath, from: packageRoot));
+}
+
+String? _findPackageRoot(String filePath) {
+  var directory = p.dirname(filePath);
+  while (true) {
+    if (File(p.join(directory, 'pubspec.yaml')).existsSync()) {
+      return directory;
+    }
+    final parent = p.dirname(directory);
+    if (parent == directory) {
+      return null;
+    }
+    directory = parent;
+  }
 }
 
 bool _isAdapterLibrary(
@@ -284,10 +308,20 @@ bool _isAdapterLibrary(
   required List<String> ignoredLibrarySuffixes,
 }) {
   final normalized = getPosixPath(path);
-  return normalized.endsWith('/lib/src/test_drop_in.dart') ||
-      normalized.endsWith('/lib/src/test_api.dart') ||
-      normalized.endsWith('/lib/src/package_test_support.dart') ||
-      ignoredLibrarySuffixes.any(normalized.endsWith);
+  return _hasPathSuffix(normalized, 'lib/src/test_drop_in.dart') ||
+      _hasPathSuffix(normalized, 'lib/src/test_api.dart') ||
+      _hasPathSuffix(normalized, 'lib/src/package_test_support.dart') ||
+      ignoredLibrarySuffixes.any(
+        (suffix) => _hasPathSuffix(normalized, suffix),
+      );
+}
+
+bool _hasPathSuffix(String path, String suffix) {
+  final normalizedSuffix = getPosixPath(suffix);
+  final bareSuffix = normalizedSuffix.startsWith('/')
+      ? normalizedSuffix.substring(1)
+      : normalizedSuffix;
+  return path == bareSuffix || path.endsWith('/$bareSuffix');
 }
 
 T? _maybe<T>(T Function() getter) {
