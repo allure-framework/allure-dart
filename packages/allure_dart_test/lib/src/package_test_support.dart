@@ -107,12 +107,15 @@ PackageTestMetadata buildPackageTestMetadata({
 
   final resolvedName = titleMetadata.displayName ?? titleMetadata.cleanName;
   final resolvedTestCaseName = testCaseName ?? titleMetadata.cleanName;
+  final normalizedPackagePath =
+      packagePath == null ? null : getPosixPath(packagePath);
   final titlePath = <String>[
-    if (packagePath != null) packagePath,
+    if (normalizedPackagePath != null)
+      ..._splitPosixPath(normalizedPackagePath),
     ...groupPath,
   ];
   final fullNameParts = <String>[
-    if (packagePath != null) packagePath,
+    if (normalizedPackagePath != null) normalizedPackagePath,
     ...groupPath,
     resolvedName,
   ];
@@ -134,7 +137,7 @@ PackageTestMetadata buildPackageTestMetadata({
     testCaseName: resolvedTestCaseName,
     titlePath: titlePath,
     groupPath: List<String>.unmodifiable(groupPath),
-    packagePath: packagePath,
+    packagePath: normalizedPackagePath,
     labels: labels,
     links: links,
     parameters: parameters,
@@ -265,6 +268,13 @@ String? resolvePackageTestPathFromDeclaration({
     return candidate;
   }
   return null;
+}
+
+List<String> _splitPosixPath(String path) {
+  if (path.isEmpty) {
+    return const <String>[];
+  }
+  return path.split('/').where((segment) => segment.isNotEmpty).toList();
 }
 
 /// Converts a URI to a package-relative test path when possible.

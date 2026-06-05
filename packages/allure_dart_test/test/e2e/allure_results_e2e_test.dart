@@ -322,7 +322,7 @@ void _expectBaseResultFields(
   expect(result['start'], isA<int>());
   expect(result['stop'], isA<int>());
   expect((result['stop'] as int) >= (result['start'] as int), isTrue);
-  expect(result['titlePath'], <String>['test/sample_test.dart']);
+  expect(result['titlePath'], <String>['test', 'sample_test.dart']);
 
   expect(result, containsPair('statusDetails', isA<Map<String, dynamic>>()));
   expect(result['steps'], isA<List<dynamic>>());

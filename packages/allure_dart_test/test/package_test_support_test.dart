@@ -10,6 +10,99 @@ void main() {
   allure.installAllure();
 
   group('package test support', () {
+    test('splits title path file segments before group names', () async {
+      await allure.description('''
+Verifies that titlePath contains package-relative path segments followed by group names, not a slash-joined file path.
+
+The fullName and native selector should keep the joined package path for stable test identity, while titlePath should remain a hierarchy for report grouping.
+''');
+
+      late PackageTestMetadata metadata;
+      await allure.step('Build metadata for a grouped package test', (_) async {
+        metadata = buildPackageTestMetadata(
+          rawName: 'logs in',
+          packagePath: 'test/features/login_test.dart',
+          groupPath: const <String>['auth', 'happy path'],
+        );
+        await allure.attachment(
+          'metadata fields',
+          const JsonEncoder.withIndent('  ').convert(<String, Object?>{
+            'titlePath': metadata.titlePath,
+            'fullName': metadata.fullName,
+            'nativeSelector': metadata.nativeSelector,
+          }),
+          contentType: 'application/json',
+          fileExtension: 'json',
+        );
+      });
+
+      await allure.step('Verify titlePath keeps hierarchical segments',
+          (step) async {
+        await step.parameter('titlePath', metadata.titlePath);
+        expect(metadata.titlePath, <String>[
+          'test',
+          'features',
+          'login_test.dart',
+          'auth',
+          'happy path',
+        ]);
+      });
+      await allure.step('Verify fullName keeps the joined package path',
+          (step) async {
+        await step.parameter('fullName', metadata.fullName);
+        expect(
+          metadata.fullName,
+          'test/features/login_test.dart#auth#happy path#logs in',
+        );
+        expect(metadata.nativeSelector, metadata.fullName);
+      });
+    });
+
+    test('normalizes package path separators before building metadata',
+        () async {
+      await allure.description('''
+Verifies that package paths are normalized to POSIX separators before they are used for titlePath, fullName, and native selectors.
+''');
+
+      late PackageTestMetadata metadata;
+      await allure.step('Build metadata from a Windows-style package path',
+          (_) async {
+        metadata = buildPackageTestMetadata(
+          rawName: 'logs in',
+          packagePath: r'test\features\login_test.dart',
+          groupPath: const <String>['auth'],
+        );
+        await allure.attachment(
+          'normalized metadata fields',
+          const JsonEncoder.withIndent('  ').convert(<String, Object?>{
+            'packagePath': metadata.packagePath,
+            'titlePath': metadata.titlePath,
+            'fullName': metadata.fullName,
+            'nativeSelector': metadata.nativeSelector,
+          }),
+          contentType: 'application/json',
+          fileExtension: 'json',
+        );
+      });
+
+      await allure.step('Verify every path-shaped field uses POSIX separators',
+          (step) async {
+        await step.parameter('packagePath', metadata.packagePath);
+        expect(metadata.packagePath, 'test/features/login_test.dart');
+        expect(metadata.titlePath, <String>[
+          'test',
+          'features',
+          'login_test.dart',
+          'auth',
+        ]);
+        expect(
+          metadata.fullName,
+          'test/features/login_test.dart#auth#logs in',
+        );
+        expect(metadata.nativeSelector, metadata.fullName);
+      });
+    });
+
     test('resolves package paths from package root', () async {
       await allure.description('''
 Verifies that test file paths are resolved from the nearest Dart package root rather than from the process current directory.

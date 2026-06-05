@@ -88,7 +88,11 @@ void main() {
         _expectRuntimeBaseResultFields(
           result,
           expectedName: 'nested test uses hooks',
-          expectedTitlePath: const ['test/sample_test.dart', 'parent group'],
+          expectedTitlePath: const [
+            'test',
+            'sample_test.dart',
+            'parent group',
+          ],
         );
         expect(result['status'], 'passed');
       });
@@ -278,7 +282,7 @@ void _expectRuntimeBaseResultFields(
   expect((result['stop'] as int) >= (result['start'] as int), isTrue);
   expect(
     result['titlePath'],
-    expectedTitlePath ?? <String>['test/sample_test.dart'],
+    expectedTitlePath ?? <String>['test', 'sample_test.dart'],
   );
 
   expect(result, containsPair('statusDetails', isA<Map<String, dynamic>>()));
