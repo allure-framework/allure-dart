@@ -5,14 +5,7 @@ import 'package:allure_flutter_test/flutter_test.dart';
 import 'package:flutter/widgets.dart';
 
 void main() {
-  final resultsDir = Directory.systemTemp.createTempSync(
-    'allure_flutter_test_',
-  );
-  installAllure(
-    lifecycle: AllureLifecycle(
-      writer: AllureResultsWriter(outputDirectory: resultsDir.path),
-    ),
-  );
+  final resultsDir = Directory('allure-results');
 
   tearDownAll(() async {
     final resultFiles = resultsDir
@@ -27,9 +20,26 @@ void main() {
         .map((file) =>
             jsonDecode(file.readAsStringSync()) as Map<String, dynamic>)
         .toList();
+    final smokeResults = results.where((result) {
+      final name = result['name'] as String;
+      return name == 'supports plain flutter_test declarations' ||
+          name == 'records widget expectations' ||
+          name.contains('wraps testWidgets variants');
+    }).toList();
 
+    expect(smokeResults, isNotEmpty);
     expect(
-      results.any(
+      smokeResults.every(
+        (result) => _hasLabel(
+          result['labels'] as List<dynamic>,
+          name: 'module',
+          value: 'allure_flutter_test',
+        ),
+      ),
+      isTrue,
+    );
+    expect(
+      smokeResults.any(
         (result) => _hasLabel(
           result['labels'] as List<dynamic>,
           name: 'framework',
@@ -39,14 +49,14 @@ void main() {
       isTrue,
     );
     expect(
-      results.any(
+      smokeResults.any(
         (result) =>
             (result['name'] as String).contains('(variant: compact)') ||
             (result['name'] as String).contains('(variant: expanded)'),
       ),
       isTrue,
     );
-    final variantResults = results
+    final variantResults = smokeResults
         .where((result) => (result['name'] as String).contains('(variant:'))
         .toList();
     expect(variantResults, hasLength(2));
@@ -64,8 +74,6 @@ void main() {
         ),
       );
     }
-
-    await resultsDir.delete(recursive: true);
   });
 
   group('drop-in smoke', () {
