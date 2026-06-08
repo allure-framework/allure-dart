@@ -16,6 +16,9 @@ Use this package when you need low-level Allure result generation without the
   classifications.
 - `addAttachmentStreamToRoot` and `addPreparedAttachmentToRoot` write large or
   late artifacts before the result references them.
+- `AllureConfig` loads checked-in `allure-dart.yaml`/`allure-dart.yml`
+  defaults for `resultsDir`, global `labels`, and run-level `environment`
+  properties.
 
 All result and attachment writes use a temporary file followed by rename so
 downstream report generation does not see partially written payloads.

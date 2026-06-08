@@ -4,16 +4,9 @@ import 'dart:io';
 import 'package:allure_flutter_test/integration_test.dart';
 
 void main() {
-  final resultsDir = Directory.systemTemp.createTempSync(
-    'allure_flutter_integration_',
-  );
+  final resultsDir = Directory('allure-results');
 
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
-  installAllure(
-    lifecycle: AllureLifecycle(
-      writer: AllureResultsWriter(outputDirectory: resultsDir.path),
-    ),
-  );
 
   tearDownAll(() async {
     final resultFiles = resultsDir
@@ -28,9 +21,26 @@ void main() {
         .map((file) =>
             jsonDecode(file.readAsStringSync()) as Map<String, dynamic>)
         .toList();
+    final integrationResults = results
+        .where((result) => result['name'] == 'labels integration binding tests')
+        .toList();
 
     expect(
-      results.every(
+      integrationResults,
+      isNotEmpty,
+    );
+    expect(
+      integrationResults.every(
+        (result) => _hasLabel(
+          result['labels'] as List<dynamic>,
+          name: 'module',
+          value: 'allure_flutter_test',
+        ),
+      ),
+      isTrue,
+    );
+    expect(
+      integrationResults.every(
         (result) => _hasLabel(
           result['labels'] as List<dynamic>,
           name: 'framework',
@@ -39,12 +49,13 @@ void main() {
       ),
       isTrue,
     );
-
-    await resultsDir.delete(recursive: true);
+    expect(integrationResults.every(_hasSteps), isTrue);
   });
 
   testWidgets('labels integration binding tests', (tester) async {
-    expect(find.text('never rendered'), findsNothing);
+    await step('verify integration binding finder', (_) async {
+      expect(find.text('never rendered'), findsNothing);
+    });
   });
 }
 
@@ -60,3 +71,6 @@ bool _hasLabel(
         label['value']?.toString() == value,
   );
 }
+
+bool _hasSteps(Map<String, dynamic> result) =>
+    (result['steps'] as List<dynamic>? ?? const <dynamic>[]).isNotEmpty;

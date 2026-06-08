@@ -62,3 +62,20 @@ host `flutter test` smoke test that initializes
 `IntegrationTestWidgetsFlutterBinding`. Running real `flutter test
 integration_test/...` suites still requires a supported app/device target in the
 consumer project.
+
+## Configuration
+
+The Flutter adapter uses the same `allure-dart.yaml` support as
+`allure_dart_test`. Place the file in the package tree to set checked-in
+defaults:
+
+```yaml
+resultsDir: build/allure-results
+labels:
+  module: app_widgets
+environment:
+  target: local
+```
+
+`ALLURE_RESULTS_DIR` overrides `resultsDir`, and `ALLURE_CONFIG` can point to an
+explicit config file.

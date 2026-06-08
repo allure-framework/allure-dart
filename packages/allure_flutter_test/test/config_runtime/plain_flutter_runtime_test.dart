@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:allure_flutter_test/allure_flutter_test.dart' as allure;
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -18,9 +19,26 @@ void main() {
         .map((file) =>
             jsonDecode(file.readAsStringSync()) as Map<String, dynamic>)
         .toList();
+    final configResults = results
+        .where((result) => result['name'] == 'installs via flutter_test_config')
+        .toList();
 
     expect(
-      results.any(
+      configResults,
+      isNotEmpty,
+    );
+    expect(
+      configResults.any(
+        (result) => _hasLabel(
+          result['labels'] as List<dynamic>,
+          name: 'module',
+          value: 'allure_flutter_test',
+        ),
+      ),
+      isTrue,
+    );
+    expect(
+      configResults.any(
         (result) => _hasLabel(
           result['labels'] as List<dynamic>,
           name: 'framework',
@@ -29,14 +47,13 @@ void main() {
       ),
       isTrue,
     );
-
-    if (resultsDir.existsSync()) {
-      await resultsDir.delete(recursive: true);
-    }
+    expect(configResults.every(_hasSteps), isTrue);
   });
 
   testWidgets('installs via flutter_test_config', (tester) async {
-    expect(find.text('absent'), findsNothing);
+    await allure.step('verify config-installed runtime step', (_) async {
+      expect(find.text('absent'), findsNothing);
+    });
   });
 }
 
@@ -52,3 +69,6 @@ bool _hasLabel(
         label['value']?.toString() == value,
   );
 }
+
+bool _hasSteps(Map<String, dynamic> result) =>
+    (result['steps'] as List<dynamic>? ?? const <dynamic>[]).isNotEmpty;

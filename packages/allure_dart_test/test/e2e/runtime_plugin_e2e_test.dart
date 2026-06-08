@@ -88,7 +88,11 @@ void main() {
         _expectRuntimeBaseResultFields(
           result,
           expectedName: 'nested test uses hooks',
-          expectedTitlePath: const ['test/sample_test.dart', 'parent group'],
+          expectedTitlePath: const [
+            'test',
+            'sample_test.dart',
+            'parent group',
+          ],
         );
         expect(result['status'], 'passed');
       });
@@ -165,6 +169,50 @@ void main() {
       });
     });
 
+    test('loads global metadata from allure-dart.yaml', () async {
+      final run = await _runRuntimeSample(
+        sampleName: 'passing_sample.dart',
+        passResultsDirectoryEnvironment: false,
+        resultsDirectoryRelativePath: 'build/allure-results',
+        allureConfigContents: '''
+resultsDir: build/allure-results
+labels:
+  module: runtime-fixture
+  layer:
+    - adapter
+    - e2e
+environment:
+  local: checked-in
+''',
+      );
+
+      await harnessStep(
+          'Verify installAllure applies checked-in allure-dart.yaml metadata',
+          () {
+        expect(run.exitCode, 0, reason: run.output);
+        expect(run.resultFiles, hasLength(1));
+
+        final result = run.results.single;
+        _expectRuntimeBaseResultFields(
+          result,
+          expectedName: 'runtime plugin passing sample',
+        );
+        expect(
+          result['labels'],
+          containsAll(<Map<String, String>>[
+            {'name': 'module', 'value': 'runtime-fixture'},
+            {'name': 'layer', 'value': 'adapter'},
+            {'name': 'layer', 'value': 'e2e'},
+          ]),
+        );
+
+        final environmentFile = run.producedFiles.singleWhere(
+          (file) => p.basename(file.path) == 'environment.properties',
+        );
+        expect(environmentFile.readAsStringSync(), 'local=checked-in\n');
+      });
+    });
+
     test('preserves representative package:test APIs with installAllure()',
         () async {
       final run = await _runRuntimeSample(sampleName: 'api_parity_sample.dart');
@@ -234,7 +282,7 @@ void _expectRuntimeBaseResultFields(
   expect((result['stop'] as int) >= (result['start'] as int), isTrue);
   expect(
     result['titlePath'],
-    expectedTitlePath ?? <String>['test/sample_test.dart'],
+    expectedTitlePath ?? <String>['test', 'sample_test.dart'],
   );
 
   expect(result, containsPair('statusDetails', isA<Map<String, dynamic>>()));
@@ -272,17 +320,24 @@ class _RunSampleResult {
   _RunSampleResult({
     required this.exitCode,
     required this.output,
+    required this.producedFiles,
     required this.resultFiles,
     required this.results,
   });
 
   final int exitCode;
   final String output;
+  final List<File> producedFiles;
   final List<File> resultFiles;
   final List<Map<String, dynamic>> results;
 }
 
-Future<_RunSampleResult> _runRuntimeSample({required String sampleName}) async {
+Future<_RunSampleResult> _runRuntimeSample({
+  required String sampleName,
+  bool passResultsDirectoryEnvironment = true,
+  String resultsDirectoryRelativePath = 'allure-results',
+  String? allureConfigContents,
+}) async {
   final repoRoot = Directory.current;
   final commonsRoot =
       p.normalize(p.join(repoRoot.path, '..', 'allure_dart_commons'));
@@ -317,6 +372,8 @@ dev_dependencies:
     tempPrefix: 'allure_dart_runtime_e2e_',
     sampleSource: sampleSource,
     pubspecContents: pubspecContents,
+    resultsDirectoryRelativePath: resultsDirectoryRelativePath,
+    allureConfigContents: allureConfigContents,
   );
   addTearDown(() async {
     if (project.tempDir.existsSync()) {
@@ -341,23 +398,27 @@ dev_dependencies:
     workingDirectory: project.tempDir,
     environment: <String, String>{
       ...pubEnvironment,
-      'ALLURE_RESULTS_DIR': project.resultsDir.path,
+      if (passResultsDirectoryEnvironment)
+        'ALLURE_RESULTS_DIR': project.resultsDir.path,
     },
     producedResultsDirectory: project.resultsDir,
   );
 
   final output = '${testRun.stdout}\n${testRun.stderr}';
 
+  final producedFiles = <File>[];
   final resultFiles = <File>[];
   final results = <Map<String, dynamic>>[];
   await harnessStep(
     'Read produced Allure result JSON files for assertions',
     () async {
+      producedFiles
+        ..clear()
+        ..addAll(listProducedFiles(project.resultsDir));
       resultFiles
         ..clear()
         ..addAll(
-          listProducedFiles(project.resultsDir)
-              .where((file) => file.path.endsWith('-result.json')),
+          producedFiles.where((file) => file.path.endsWith('-result.json')),
         )
         ..sort((a, b) => a.path.compareTo(b.path));
       results
@@ -374,6 +435,7 @@ dev_dependencies:
   return _RunSampleResult(
     exitCode: testRun.exitCode,
     output: output,
+    producedFiles: producedFiles,
     resultFiles: resultFiles,
     results: results,
   );

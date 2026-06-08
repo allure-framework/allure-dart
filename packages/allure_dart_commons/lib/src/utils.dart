@@ -76,11 +76,13 @@ AllureStatus getStatusFromError(Object error, [StackTrace? stackTrace]) {
   bool containsAssertionSignal(String value) {
     return value.contains('assert') ||
         value.contains('expectation') ||
-        value.contains('matcher');
+        value.contains('matcher') ||
+        value.contains('testfailure');
   }
 
   if (containsAssertionSignal(typeName) ||
       containsAssertionSignal(message) ||
+      message.contains('expected:') ||
       trace.contains('package:matcher') ||
       trace.contains('package:test') ||
       _hasDynamicField(error, 'matcherResult') ||
@@ -160,7 +162,7 @@ List<AllureLabel> getSuiteLabels(List<String> suites) {
   return <AllureLabel>[
     AllureLabel(name: 'parentSuite', value: suites.first),
     AllureLabel(name: 'suite', value: suites[1]),
-    AllureLabel(name: 'subSuite', value: suites.skip(2).join(' / ')),
+    AllureLabel(name: 'subSuite', value: suites.skip(2).join(' > ')),
   ];
 }
 

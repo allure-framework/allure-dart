@@ -10,6 +10,7 @@ class PreparedTestProject {
     required this.resultsDir,
     required this.sampleFile,
     required this.pubspecFile,
+    this.allureConfigFile,
     this.testPlanFile,
   });
 
@@ -17,6 +18,7 @@ class PreparedTestProject {
   final Directory resultsDir;
   final File sampleFile;
   final File pubspecFile;
+  final File? allureConfigFile;
   final File? testPlanFile;
 }
 
@@ -61,22 +63,32 @@ Future<PreparedTestProject> prepareTestProject({
   required String tempPrefix,
   required File sampleSource,
   required String pubspecContents,
+  String resultsDirectoryRelativePath = 'allure-results',
+  String? allureConfigContents,
   String? testPlanContents,
 }) {
   return allure.step('Prepare test project', (step) async {
     final tempDir = await Directory.systemTemp.createTemp(tempPrefix);
-    final resultsDir = Directory(p.join(tempDir.path, 'allure-results'));
+    final resultsDir =
+        Directory(p.join(tempDir.path, resultsDirectoryRelativePath));
     final testDir = Directory(p.join(tempDir.path, 'test'));
     await testDir.create(recursive: true);
 
     final sampleFile = File(p.join(testDir.path, 'sample_test.dart'));
     final pubspecFile = File(p.join(tempDir.path, 'pubspec.yaml'));
+    final allureConfigFile = allureConfigContents == null
+        ? null
+        : File(p.join(tempDir.path, 'allure-dart.yaml'));
     final testPlanFile = testPlanContents == null
         ? null
         : File(p.join(tempDir.path, 'testplan.json'));
 
     await sampleSource.copy(sampleFile.path);
     await pubspecFile.writeAsString(pubspecContents);
+    final allureConfig = allureConfigContents;
+    if (allureConfigFile != null && allureConfig != null) {
+      await allureConfigFile.writeAsString(allureConfig);
+    }
     final testPlan = testPlanContents;
     if (testPlanFile != null && testPlan != null) {
       await testPlanFile.writeAsString(testPlan);
@@ -89,6 +101,7 @@ Future<PreparedTestProject> prepareTestProject({
     for (final file in <File>[
       sampleFile,
       pubspecFile,
+      if (allureConfigFile != null) allureConfigFile,
       if (testPlanFile != null) testPlanFile,
     ]) {
       await attachFile(file, relativeTo: tempDir);
@@ -99,6 +112,7 @@ Future<PreparedTestProject> prepareTestProject({
       resultsDir: resultsDir,
       sampleFile: sampleFile,
       pubspecFile: pubspecFile,
+      allureConfigFile: allureConfigFile,
       testPlanFile: testPlanFile,
     );
   });
