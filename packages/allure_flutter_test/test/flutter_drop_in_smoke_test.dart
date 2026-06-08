@@ -48,6 +48,7 @@ void main() {
       ),
       isTrue,
     );
+    expect(smokeResults.every(_hasSteps), isTrue);
     expect(
       smokeResults.any(
         (result) =>
@@ -77,25 +78,31 @@ void main() {
   });
 
   group('drop-in smoke', () {
-    test('supports plain flutter_test declarations', () {
-      expect(2 + 2, equals(4));
+    test('supports plain flutter_test declarations', () async {
+      await step('verify plain flutter_test expectation', (_) async {
+        expect(2 + 2, equals(4));
+      });
     });
 
     testWidgets(
       'wraps testWidgets variants',
       (tester) async {
-        expect(find.text('missing'), findsNothing);
+        await step('verify absent text is not found', (_) async {
+          expect(find.text('missing'), findsNothing);
+        });
       },
       variant: ValueVariant<String>(<String>{'compact', 'expanded'}),
     );
 
     testWidgets('records widget expectations', (tester) async {
-      await tester.pumpWidget(const Directionality(
-        textDirection: TextDirection.ltr,
-        child: Text('hello'),
-      ));
+      await step('render widget and verify text', (_) async {
+        await tester.pumpWidget(const Directionality(
+          textDirection: TextDirection.ltr,
+          child: Text('hello'),
+        ));
 
-      expect(find.text('hello'), findsOneWidget);
+        expect(find.text('hello'), findsOneWidget);
+      });
     });
   });
 }
@@ -112,3 +119,6 @@ bool _hasLabel(
         label['value']?.toString() == value,
   );
 }
+
+bool _hasSteps(Map<String, dynamic> result) =>
+    (result['steps'] as List<dynamic>? ?? const <dynamic>[]).isNotEmpty;

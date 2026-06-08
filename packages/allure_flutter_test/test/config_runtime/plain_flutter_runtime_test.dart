@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:allure_flutter_test/allure_flutter_test.dart' as allure;
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -46,10 +47,13 @@ void main() {
       ),
       isTrue,
     );
+    expect(configResults.every(_hasSteps), isTrue);
   });
 
   testWidgets('installs via flutter_test_config', (tester) async {
-    expect(find.text('absent'), findsNothing);
+    await allure.step('verify config-installed runtime step', (_) async {
+      expect(find.text('absent'), findsNothing);
+    });
   });
 }
 
@@ -65,3 +69,6 @@ bool _hasLabel(
         label['value']?.toString() == value,
   );
 }
+
+bool _hasSteps(Map<String, dynamic> result) =>
+    (result['steps'] as List<dynamic>? ?? const <dynamic>[]).isNotEmpty;

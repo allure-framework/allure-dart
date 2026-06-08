@@ -376,9 +376,12 @@ class AllureTestRuntimePlugin {
     }
 
     final failure = _extractFailure(resolved.liveTest);
+    final runnerStatus = _resolveStatus(resolved.liveTest);
     await _lifecycle.stopTest(
       uuid,
-      status: _resolveStatus(resolved.liveTest),
+      status: failure == null || runnerStatus == AllureStatus.skipped
+          ? runnerStatus
+          : _resolveRecordedFailureStatus(uuid) ?? runnerStatus,
       error: failure?.error,
       stackTrace: failure?.stackTrace,
     );
@@ -450,6 +453,29 @@ class AllureTestRuntimePlugin {
       return AllureStatus.broken;
     }
     return AllureStatus.passed;
+  }
+
+  AllureStatus? _resolveRecordedFailureStatus(String uuid) {
+    AllureStatus? resolvedStatus;
+    _lifecycle.updateTest(uuid, (result) {
+      resolvedStatus = _resolveStepFailureStatus(result.steps);
+    });
+    return resolvedStatus;
+  }
+
+  AllureStatus? _resolveStepFailureStatus(List<AllureStepResult> steps) {
+    var hasBrokenStep = false;
+    for (final step in steps) {
+      final nestedStatus = _resolveStepFailureStatus(step.steps);
+      final status = nestedStatus ?? step.status;
+      if (status == AllureStatus.failed) {
+        return AllureStatus.failed;
+      }
+      if (status == AllureStatus.broken) {
+        hasBrokenStep = true;
+      }
+    }
+    return hasBrokenStep ? AllureStatus.broken : null;
   }
 
   _FailureDetails? _extractFailure(dynamic liveTest) {

@@ -76,11 +76,13 @@ AllureStatus getStatusFromError(Object error, [StackTrace? stackTrace]) {
   bool containsAssertionSignal(String value) {
     return value.contains('assert') ||
         value.contains('expectation') ||
-        value.contains('matcher');
+        value.contains('matcher') ||
+        value.contains('testfailure');
   }
 
   if (containsAssertionSignal(typeName) ||
       containsAssertionSignal(message) ||
+      message.contains('expected:') ||
       trace.contains('package:matcher') ||
       trace.contains('package:test') ||
       _hasDynamicField(error, 'matcherResult') ||

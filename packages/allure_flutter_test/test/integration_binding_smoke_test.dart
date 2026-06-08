@@ -49,10 +49,13 @@ void main() {
       ),
       isTrue,
     );
+    expect(integrationResults.every(_hasSteps), isTrue);
   });
 
   testWidgets('labels integration binding tests', (tester) async {
-    expect(find.text('never rendered'), findsNothing);
+    await step('verify integration binding finder', (_) async {
+      expect(find.text('never rendered'), findsNothing);
+    });
   });
 }
 
@@ -68,3 +71,6 @@ bool _hasLabel(
         label['value']?.toString() == value,
   );
 }
+
+bool _hasSteps(Map<String, dynamic> result) =>
+    (result['steps'] as List<dynamic>? ?? const <dynamic>[]).isNotEmpty;
