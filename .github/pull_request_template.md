@@ -12,18 +12,14 @@ Examples of good pull request names:
 -->
 
 ### Context
+
 <!---
 Describe the problem or feature in addition to a link to the issues.
 -->
 
-#### Validation
-<!---
-List commands run and link Allure agent-mode evidence when tests changed.
--->
-
 #### Checklist
+
 - [ ] [Sign Allure CLA][cla]
 - [ ] Provide unit tests
-- [ ] Add exactly one `pr:` label for generated release notes
 
-[cla]: https://cla-assistant.io/accept/allure-framework/allure2
+[cla]: https://cla-assistant.io/accept/allure-framework/allure-dart
