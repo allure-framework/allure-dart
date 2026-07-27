@@ -62,7 +62,7 @@ jobs:
         run: flutter pub get
 
       - name: Run commons tests with Allure
-        if: always()
+        if: ${{ !cancelled() }}
         working-directory: packages/allure_dart_commons
         shell: bash
         run: >
@@ -74,7 +74,7 @@ jobs:
           -- dart test
 
       - name: Run package:test adapter tests with Allure
-        if: always()
+        if: ${{ !cancelled() }}
         working-directory: packages/allure_dart_test
         shell: bash
         run: >
@@ -86,7 +86,7 @@ jobs:
           -- dart test
 
       - name: Run Flutter adapter tests with Allure
-        if: always()
+        if: ${{ !cancelled() }}
         working-directory: packages/allure_flutter_test
         shell: bash
         run: >
@@ -98,7 +98,7 @@ jobs:
           -- flutter test test
 
       - name: Upload Allure test dumps
-        if: always()
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7
         with:
           name: ${{ env.ALLURE_TEST_DUMP_NAME }}
@@ -108,7 +108,7 @@ jobs:
     needs: [build]
     name: Build report
     runs-on: ubuntu-latest
-    if: always()
+    if: ${{ !cancelled() }}
     permissions:
       contents: read
       pull-requests: write
