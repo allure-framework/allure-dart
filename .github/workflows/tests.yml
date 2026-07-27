@@ -28,10 +28,12 @@ jobs:
             os: ubuntu-latest
             allure-env: ubuntu-dart-stable
             dump-name: allure-results-test-ubuntu
+            chrome-smoke: true
           - name: Windows
             os: windows-latest
             allure-env: windows-dart-stable
             dump-name: allure-results-test-windows
+            chrome-smoke: false
     env:
       ALLURE_MATRIX_ENV: ${{ matrix.allure-env }}
       ALLURE_TEST_DUMP_NAME: ${{ matrix.dump-name }}
@@ -60,6 +62,26 @@ jobs:
       - name: Install Flutter adapter dependencies
         working-directory: packages/allure_flutter_test
         run: flutter pub get
+
+      - name: Browser compile smoke
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: >
+          dart compile js scripts/browser_compile_smoke.dart
+          -o "${RUNNER_TEMP}/allure_commons_browser_smoke.js"
+
+      - name: Set up Chrome
+        id: setup-chrome
+        if: ${{ !cancelled() && matrix.chrome-smoke }}
+        uses: browser-actions/setup-chrome@v2
+
+      - name: Browser Chrome smoke
+        if: ${{ !cancelled() && matrix.chrome-smoke }}
+        working-directory: packages/allure_dart_commons
+        shell: bash
+        env:
+          CHROME_EXECUTABLE: ${{ steps.setup-chrome.outputs.chrome-path }}
+        run: dart test -p chrome test/platform_support_test.dart
 
       - name: Run commons tests with Allure
         if: ${{ !cancelled() }}

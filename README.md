@@ -275,6 +275,13 @@ Compile the browser smoke entry point with:
 dart compile js scripts/browser_compile_smoke.dart -o /tmp/allure_commons.js
 ```
 
+Run the commons platform smoke in Chrome (requires a local Chrome binary):
+
+```bash
+cd packages/allure_dart_commons
+dart test -p chrome test/platform_support_test.dart
+```
+
 ## Advanced Runtime And Lifecycle APIs
 
 `allure_dart_commons` exposes low-level APIs for custom adapters and advanced
