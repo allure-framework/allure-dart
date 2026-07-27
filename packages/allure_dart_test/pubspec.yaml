@@ -7,7 +7,7 @@ issue_tracker: https://github.com/allure-framework/allure-dart/issues
 resolution: workspace
 
 environment:
-  sdk: ^3.6.0
+  sdk: ^3.8.0
 
 dependencies:
   allure_dart_commons: ^1.1.0
@@ -16,4 +16,4 @@ dependencies:
   test_api: ^0.7.0
 
 dev_dependencies:
-  lints: ^5.1.1
+  lints: ^6.1.0
