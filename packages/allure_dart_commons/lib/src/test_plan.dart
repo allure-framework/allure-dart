@@ -74,8 +74,10 @@ TestPlanV1? _parseTestPlanFromPath(String? path) {
       return null;
     }
     final version = decoded['version'];
-    if (version != null && version.toString() != '1.0') {
-      stderr.writeln('Allure: unsupported test plan version: $version');
+    if (version == null || version.toString() != '1.0') {
+      stderr.writeln(
+        'Allure: unsupported or missing test plan version: $version',
+      );
       return null;
     }
     final tests = decoded['tests'];
@@ -101,7 +103,9 @@ TestPlanV1? _parseTestPlanFromPath(String? path) {
           ),
         )
         .toList();
-    if (entries.isEmpty) {
+    // A valid empty `tests` array means "select nothing". Only treat the plan
+    // as unavailable when every declared entry was malformed.
+    if (tests.isNotEmpty && entries.isEmpty) {
       return null;
     }
     return TestPlanV1(tests: entries);

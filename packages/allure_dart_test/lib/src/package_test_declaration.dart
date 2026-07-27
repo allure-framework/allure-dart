@@ -64,7 +64,6 @@ PreparedPackageTestDeclaration preparePackageTestDeclaration({
   final groupPath = registry.currentPath;
   final userSkipped = skip != null && skip != false;
   final isSkipped = userSkipped || registry.isCurrentPathSkipped;
-  registry.registerTest(packagePath: resolvedPackagePath);
   final declaredMetadata = buildPackageTestMetadata(
     rawName: rawName ?? description?.toString() ?? '',
     rawTags: normalizePackageTestTags(tags),
@@ -78,7 +77,6 @@ PreparedPackageTestDeclaration preparePackageTestDeclaration({
 
   final testPlan = parseTestPlan();
   final excludedByTestPlan = testPlan != null &&
-      !isSkipped &&
       !includedInTestPlan(
         testPlan,
         id: declaredMetadata.externalId,
@@ -86,6 +84,11 @@ PreparedPackageTestDeclaration preparePackageTestDeclaration({
         nativeSelector: declaredMetadata.nativeSelector,
         tags: declaredMetadata.rawTags,
       );
+  // Plan-excluded declarations never become lifecycle children, so omit them
+  // from expected child counts used to flush group fixtures.
+  if (!excludedByTestPlan) {
+    registry.registerTest(packagePath: resolvedPackagePath);
+  }
 
   return PreparedPackageTestDeclaration(
     metadata: declaredMetadata,

@@ -38,12 +38,11 @@ void main() {
         expect(result['name'], 'intentionally fails');
         expect(result['status'], 'failed');
         expect(
-          (result['statusDetails'] as Map<String, dynamic>)['message'] as String,
+          (result['statusDetails'] as Map<String, dynamic>)['message']
+              as String,
           contains('Test failed'),
         );
       });
-
-      await run.dispose();
     });
 
     test('captures an attachment payload written from a testWidgets sample',
@@ -61,8 +60,8 @@ void main() {
         final steps =
             (result['steps'] as List<dynamic>).cast<Map<String, dynamic>>();
         expect(steps, hasLength(1));
-        final attachmentSteps =
-            (steps.single['steps'] as List<dynamic>).cast<Map<String, dynamic>>();
+        final attachmentSteps = (steps.single['steps'] as List<dynamic>)
+            .cast<Map<String, dynamic>>();
         expect(attachmentSteps, hasLength(1));
         final attachments =
             (attachmentSteps.single['attachments'] as List<dynamic>)
@@ -77,8 +76,6 @@ void main() {
         ).readAsStringSync();
         expect(attachmentContent, 'flutter-widget-attachment-content');
       });
-
-      await run.dispose();
     });
 
     test(
@@ -103,12 +100,11 @@ void main() {
         // reaches the lifecycle and therefore writes no result file.
         expect(run.output, contains('excluded by test plan'));
         expect(
-          run.results.any((result) => result['name'] == 'excluded by test plan'),
+          run.results
+              .any((result) => result['name'] == 'excluded by test plan'),
           isFalse,
         );
       });
-
-      await run.dispose();
     });
 
     test(
@@ -124,8 +120,6 @@ void main() {
         expect(run.exitCode, 0, reason: run.output);
         expect(run.resultFiles, isEmpty);
       });
-
-      await run.dispose();
     });
 
     test(
@@ -166,8 +160,6 @@ void main() {
           isTrue,
         );
       });
-
-      await run.dispose();
     });
 
     test(
@@ -198,8 +190,6 @@ void main() {
               'before the nested test self-skips',
         );
       });
-
-      await run.dispose();
     });
 
     test('records a retry parameter across testWidgets retries', () async {
@@ -222,8 +212,6 @@ void main() {
         expect(retryParameters, hasLength(1));
         expect(retryParameters.single['value'], '1');
       });
-
-      await run.dispose();
     });
 
     test(
@@ -270,8 +258,6 @@ void main() {
         expect(alphaContent, 'alpha-only-content');
         expect(betaContent, 'beta-only-content');
       });
-
-      await run.dispose();
     });
 
     test(
@@ -291,7 +277,8 @@ void main() {
         expect(result['name'], 'fails after pumping a widget');
         expect(result['status'], 'failed');
 
-        final attachment = _findAttachment(result, name: 'screenshot-on-failure');
+        final attachment =
+            _findAttachment(result, name: 'screenshot-on-failure');
         expect(attachment, isNotNull, reason: run.output);
         expect(attachment!['type'], 'image/png');
 
@@ -300,8 +287,6 @@ void main() {
         ).readAsBytesSync();
         _expectPngMagicBytes(bytes);
       });
-
-      await run.dispose();
     });
 
     test(
@@ -322,8 +307,7 @@ void main() {
         expect(result['name'], 'mismatches the committed golden file');
         expect(result['status'], isNot('passed'));
 
-        final actualAttachment =
-            _findAttachment(result, name: 'golden-actual');
+        final actualAttachment = _findAttachment(result, name: 'golden-actual');
         expect(actualAttachment, isNotNull, reason: run.output);
         expect(actualAttachment!['type'], 'image/png');
         _expectPngMagicBytes(
@@ -347,8 +331,6 @@ void main() {
           );
         }
       });
-
-      await run.dispose();
     });
   });
 }
@@ -366,12 +348,11 @@ Map<String, dynamic>? _findAttachment(
       return attachment;
     }
   }
-  final steps =
-      (result['steps'] as List<dynamic>? ?? const []).cast<Map<String, dynamic>>();
+  final steps = (result['steps'] as List<dynamic>? ?? const [])
+      .cast<Map<String, dynamic>>();
   for (final step in steps) {
-    final stepAttachments =
-        (step['attachments'] as List<dynamic>? ?? const [])
-            .cast<Map<String, dynamic>>();
+    final stepAttachments = (step['attachments'] as List<dynamic>? ?? const [])
+        .cast<Map<String, dynamic>>();
     for (final attachment in stepAttachments) {
       if (attachment['name'] == name) {
         return attachment;
@@ -495,6 +476,7 @@ Future<_FlutterSampleRun> _runFlutterSamples(
     final testPlanFile = File(p.join(tempDir.path, 'testplan.json'));
     await testPlanFile.writeAsString(
       jsonEncode(<String, dynamic>{
+        'version': '1.0',
         'tests': <Map<String, String>>[
           {'selector': testPlanSelector},
         ],
@@ -536,7 +518,7 @@ Future<_FlutterSampleRun> _runFlutterSamples(
           (file) => jsonDecode(file.readAsStringSync()) as Map<String, dynamic>)
       .toList();
 
-  return _FlutterSampleRun(
+  final run = _FlutterSampleRun(
     exitCode: process.exitCode,
     output: '${process.stdout}\n${process.stderr}',
     resultsDir: resultsDir,
@@ -546,4 +528,6 @@ Future<_FlutterSampleRun> _runFlutterSamples(
     containers: containers,
     tempDir: tempDir,
   );
+  addTearDown(run.dispose);
+  return run;
 }

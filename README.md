@@ -240,6 +240,9 @@ drop-in `test`, `group`, and `testWidgets` wrappers skip tests that are not in
 the plan. Suites that use `installAllure()` with the original framework imports
 still run the test and mark it with the `ALLURE_TESTPLAN_SKIP` label.
 
+Plans must declare `"version": "1.0"`. A valid empty `"tests": []` plan selects
+no tests. Missing or unsupported versions are ignored (no filtering).
+
 ```bash
 ALLURE_TESTPLAN_PATH=testplan.json dart test
 ```

@@ -409,7 +409,7 @@ environment:
       final run = await _runRuntimeSample(
         sampleName: 'test_plan_sample.dart',
         testPlanContents:
-            '{"tests":[{"selector":"test/sample_test.dart#selected by test plan"}]}',
+            '{"version":"1.0","tests":[{"selector":"test/sample_test.dart#selected by test plan"}]}',
       );
 
       await harnessStep(

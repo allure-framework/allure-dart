@@ -17,15 +17,24 @@ bool _installed = false;
 
 /// Installs the golden-diff attach hook, once per process.
 ///
-/// Safe to call more than once: only the first call wraps
-/// [ft.goldenFileComparator]. Subsequent calls are a no-op, so the
-/// comparator is never wrapped twice.
+/// Safe to call more than once: only the first call registers the per-test
+/// re-wrap hook. Each test `setUp` re-wraps when a project replaces
+/// [ft.goldenFileComparator] after install (for example with a tolerance
+/// comparator), so attachments keep working.
 void installGoldenDiffHook() {
-  if (_installed) {
+  if (!_installed) {
+    _installed = true;
+    ft.setUp(_ensureGoldenComparatorWrapped);
+  }
+  _ensureGoldenComparatorWrapped();
+}
+
+void _ensureGoldenComparatorWrapped() {
+  if (ft.goldenFileComparator is _AllureGoldenFileComparator) {
     return;
   }
-  _installed = true;
-  ft.goldenFileComparator = _AllureGoldenFileComparator(ft.goldenFileComparator);
+  ft.goldenFileComparator =
+      _AllureGoldenFileComparator(ft.goldenFileComparator);
 }
 
 /// A [ft.GoldenFileComparator] that delegates to another comparator and

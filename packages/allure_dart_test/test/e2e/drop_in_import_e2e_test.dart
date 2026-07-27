@@ -340,7 +340,7 @@ void main() {
       final run = await _runDropInSample(
         sampleName: 'test_plan_sample.dart',
         testPlanContents:
-            '{"tests":[{"selector":"test/sample_test.dart#selected elsewhere"}]}',
+            '{"version":"1.0","tests":[{"selector":"test/sample_test.dart#selected elsewhere"}]}',
       );
 
       await harnessStep(

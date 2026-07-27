@@ -54,7 +54,8 @@ Automatic values must not survive alongside an env or config override with the
 same name. Multi-value labels such as `tag` must still be allowed to repeat.
 ''');
 
-      await step('Prefer ALLURE_LABEL_* when building host/thread helpers', (_) {
+      await step('Prefer ALLURE_LABEL_* when building host/thread helpers',
+          (_) {
         expect(
           getHostLabel(<String, String>{'ALLURE_LABEL_host': 'ci-runner-01'})
               .value,
@@ -176,8 +177,8 @@ same name. Multi-value labels such as `tag` must still be allowed to repeat.
       );
 
       await step('Verify each singleton label keeps only the override', (_) {
-        final labels = (result['labels'] as List<dynamic>)
-            .cast<Map<String, dynamic>>();
+        final labels =
+            (result['labels'] as List<dynamic>).cast<Map<String, dynamic>>();
         for (final entry in <String, String>{
           'framework': 'custom-framework',
           'language': 'custom-lang',
@@ -998,14 +999,19 @@ The result should not reference an attachment until the producer has fully writt
       });
     });
 
-    test('degrades invalid test plans to unavailable plans', () async {
+    test('parses valid empty plans and ignores unavailable test plans',
+        () async {
       await description('''
-Verifies that malformed, unsupported, and missing Allure test plans do not fail the process.
+Verifies that a valid version 1.0 plan with an empty `tests` list selects no tests,
+while malformed, unsupported, versionless, and missing Allure test plans do not fail
+the process.
 
-The parser should warn and return `null` so callers can continue without filtering when the plan cannot be trusted.
+The parser should return an empty `TestPlanV1` for the valid empty plan. It should
+warn and return `null` so callers can continue without filtering when a plan cannot
+be trusted, including when every declared entry is malformed.
 ''');
       final tempDir = await step(
-        'Create invalid test plan files',
+        'Create valid and unavailable test plan files',
         (_) async {
           final directory =
               await Directory.systemTemp.createTemp('allure_dart_testplan_');
@@ -1015,6 +1021,17 @@ The parser should warn and return `null` so callers can continue without filteri
             }
           });
           await File(p.join(directory.path, 'invalid.json')).writeAsString('{');
+          await File(p.join(directory.path, 'empty.json')).writeAsString(
+            jsonEncode(<String, Object?>{
+              'version': '1.0',
+              'tests': <Object?>[],
+            }),
+          );
+          await File(p.join(directory.path, 'versionless.json')).writeAsString(
+            jsonEncode(<String, Object?>{
+              'tests': <Object?>[],
+            }),
+          );
           await File(p.join(directory.path, 'unsupported.json')).writeAsString(
             jsonEncode(<String, Object?>{
               'version': '2.0',
@@ -1035,11 +1052,29 @@ The parser should warn and return `null` so callers can continue without filteri
         },
       );
 
-      await step('Verify invalid test plans are ignored', (_) {
+      await step('Verify valid empty plan selects no tests', (_) {
+        final plan = parseTestPlan(
+          <String, String>{
+            'ALLURE_TESTPLAN_PATH': p.join(tempDir.path, 'empty.json'),
+          },
+        );
+        expect(plan, isA<TestPlanV1>());
+        expect(plan!.tests, isEmpty);
+      });
+
+      await step('Verify unavailable test plans are ignored', (_) {
         expect(
           parseTestPlan(
             <String, String>{
               'ALLURE_TESTPLAN_PATH': p.join(tempDir.path, 'missing.json'),
+            },
+          ),
+          isNull,
+        );
+        expect(
+          parseTestPlan(
+            <String, String>{
+              'ALLURE_TESTPLAN_PATH': p.join(tempDir.path, 'versionless.json'),
             },
           ),
           isNull,

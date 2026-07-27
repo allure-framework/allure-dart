@@ -12,9 +12,11 @@ import 'dart:ui' as ui;
 import 'package:allure_dart_commons/allure_dart_commons.dart';
 import 'package:flutter/widgets.dart' show WidgetsBinding;
 import 'package:flutter_test/flutter_test.dart' as ft;
+// ignore: implementation_imports
+import 'package:test_api/src/backend/invoker.dart' as internal_invoker;
 
 bool _installed = false;
-bool _pendingFailure = false;
+final Set<String> _pendingFailureTests = <String>{};
 
 /// Installs the screenshot-on-failure hook, once per process.
 ///
@@ -27,7 +29,7 @@ void installScreenshotOnFailureHook() {
 
   final previousReporter = ft.reportTestException;
   ft.reportTestException = (details, testDescription) {
-    _pendingFailure = true;
+    _pendingFailureTests.add(testDescription);
     previousReporter(details, testDescription);
   };
 
@@ -40,10 +42,11 @@ void installScreenshotOnFailureHook() {
 }
 
 Future<void> _captureScreenshotOnFailure() async {
-  // Cleared unconditionally so a retried test starts the next attempt with
-  // a fresh flag, regardless of whether this capture succeeds.
-  final shouldCapture = _pendingFailure;
-  _pendingFailure = false;
+  final currentTest = _currentTestDescription();
+  // Cleared for this test only so a delayed failure from another test cannot
+  // attach a screenshot to a later passing attempt, and retries start fresh.
+  final shouldCapture =
+      currentTest != null && _pendingFailureTests.remove(currentTest);
   if (!shouldCapture || !ft.canCaptureImage) {
     return;
   }
@@ -73,5 +76,19 @@ Future<void> _captureScreenshotOnFailure() async {
   } catch (_) {
     // Best-effort: a screenshot capture failure must never mask the
     // original test failure that triggered it.
+  }
+}
+
+String? _currentTestDescription() {
+  try {
+    final liveTest = internal_invoker.Invoker.current?.liveTest;
+    if (liveTest == null) {
+      return null;
+    }
+    // Flutter's reportTestException uses the package:test test name, which
+    // matches liveTest.test.name (including group prefixes).
+    return liveTest.test.name.toString();
+  } catch (_) {
+    return null;
   }
 }

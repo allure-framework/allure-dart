@@ -99,6 +99,10 @@ class MessageTestRuntime implements TestRuntime {
 }
 
 TestRuntime _globalTestRuntime = const NoopTestRuntime();
+const Symbol _testRuntimeKey = #allure.testRuntime;
+
+TestRuntime get _currentTestRuntime =>
+    Zone.current[_testRuntimeKey] as TestRuntime? ?? _globalTestRuntime;
 
 /// Replaces the process-wide Allure runtime used by top-level APIs.
 void setGlobalTestRuntime(TestRuntime runtime) {
@@ -111,9 +115,18 @@ TestRuntime getGlobalTestRuntime() => _globalTestRuntime;
 /// Returns the process-wide Allure runtime, preserving compatibility.
 TestRuntime getGlobalTestRuntimeWithAutoconfig() => _globalTestRuntime;
 
+/// Runs [body] with a zone-scoped [TestRuntime] that does not replace the
+/// process-wide runtime installed by adapters.
+T runWithTestRuntime<T>(TestRuntime runtime, T Function() body) {
+  return runZoned(
+    body,
+    zoneValues: <Object?, Object?>{_testRuntimeKey: runtime},
+  );
+}
+
 /// Adds a single Allure label to the current test.
 Future<void> label(String name, String value) {
-  return _globalTestRuntime.send(
+  return _currentTestRuntime.send(
     RuntimeMessage(
       type: 'metadata',
       data: <String, Object?>{
@@ -127,7 +140,7 @@ Future<void> label(String name, String value) {
 
 /// Adds multiple Allure labels to the current test.
 Future<void> labels(Iterable<AllureLabel> values) {
-  return _globalTestRuntime.send(
+  return _currentTestRuntime.send(
     RuntimeMessage(
       type: 'metadata',
       data: <String, Object?>{
@@ -148,7 +161,7 @@ Future<void> link(
 
 /// Adds multiple Allure links to the current test.
 Future<void> links(Iterable<AllureLink> values) {
-  return _globalTestRuntime.send(
+  return _currentTestRuntime.send(
     RuntimeMessage(
       type: 'metadata',
       data: <String, Object?>{
@@ -165,7 +178,7 @@ Future<void> parameter(
   bool? excluded,
   AllureParameterMode? mode,
 }) {
-  return _globalTestRuntime.send(
+  return _currentTestRuntime.send(
     RuntimeMessage(
       type: 'metadata',
       data: <String, Object?>{
@@ -184,7 +197,7 @@ Future<void> parameter(
 
 /// Sets the Markdown description for the current test.
 Future<void> description(String markdown) {
-  return _globalTestRuntime.send(
+  return _currentTestRuntime.send(
     RuntimeMessage(
       type: 'metadata',
       data: <String, Object?>{'description': markdown},
@@ -194,7 +207,7 @@ Future<void> description(String markdown) {
 
 /// Sets the HTML description for the current test.
 Future<void> descriptionHtml(String html) {
-  return _globalTestRuntime.send(
+  return _currentTestRuntime.send(
     RuntimeMessage(
       type: 'metadata',
       data: <String, Object?>{'descriptionHtml': html},
@@ -204,7 +217,7 @@ Future<void> descriptionHtml(String html) {
 
 /// Overrides the display name of the current test.
 Future<void> displayName(String name) {
-  return _globalTestRuntime.send(
+  return _currentTestRuntime.send(
     RuntimeMessage(
       type: 'metadata',
       data: <String, Object?>{'displayName': name},
@@ -214,7 +227,7 @@ Future<void> displayName(String name) {
 
 /// Sets the history id of the current test.
 Future<void> historyId(String value) {
-  return _globalTestRuntime.send(
+  return _currentTestRuntime.send(
     RuntimeMessage(
       type: 'metadata',
       data: <String, Object?>{'historyId': value},
@@ -224,7 +237,7 @@ Future<void> historyId(String value) {
 
 /// Sets the test case id of the current test.
 Future<void> testCaseId(String value) {
-  return _globalTestRuntime.send(
+  return _currentTestRuntime.send(
     RuntimeMessage(
       type: 'metadata',
       data: <String, Object?>{'testCaseId': value},
@@ -234,7 +247,7 @@ Future<void> testCaseId(String value) {
 
 /// Sets the test case name of the current test.
 Future<void> testCaseName(String value) {
-  return _globalTestRuntime.send(
+  return _currentTestRuntime.send(
     RuntimeMessage(
       type: 'metadata',
       data: <String, Object?>{'testCaseName': value},
@@ -252,7 +265,7 @@ Future<void> statusDetails({
   String? actual,
   String? expected,
 }) {
-  return _globalTestRuntime.send(
+  return _currentTestRuntime.send(
     RuntimeMessage(
       type: 'metadata',
       data: <String, Object?>{
@@ -295,7 +308,7 @@ Future<void> attachment(
   int? timestamp,
 }) {
   final payload = _encodeAttachmentContent(content);
-  return _globalTestRuntime.send(
+  return _currentTestRuntime.send(
     RuntimeMessage(
       type: 'attachment_content',
       data: <String, Object?>{
@@ -320,7 +333,7 @@ Future<void> attachmentPath(
   bool wrapInStep = true,
   int? timestamp,
 }) {
-  return _globalTestRuntime.send(
+  return _currentTestRuntime.send(
     RuntimeMessage(
       type: 'attachment_path',
       data: <String, Object?>{
@@ -352,7 +365,7 @@ Future<void> globalAttachment(
   String? fileExtension,
 }) {
   final payload = _encodeAttachmentContent(content);
-  return _globalTestRuntime.send(
+  return _currentTestRuntime.send(
     RuntimeMessage(
       type: 'global_attachment_content',
       data: <String, Object?>{
@@ -373,7 +386,7 @@ Future<void> globalAttachmentPath(
   required String contentType,
   String? fileExtension,
 }) {
-  return _globalTestRuntime.send(
+  return _currentTestRuntime.send(
     RuntimeMessage(
       type: 'global_attachment_path',
       data: <String, Object?>{
@@ -396,7 +409,7 @@ Future<void> globalError({
   String? actual,
   String? expected,
 }) {
-  return _globalTestRuntime.send(
+  return _currentTestRuntime.send(
     RuntimeMessage(
       type: 'global_error',
       data: <String, Object?>{
@@ -419,13 +432,13 @@ Future<void> logStep(
   Object? error,
 }) async {
   final timestamp = currentTimestamp();
-  await _globalTestRuntime.send(
+  await _currentTestRuntime.send(
     RuntimeMessage(
       type: 'step_start',
       data: <String, Object?>{'name': name, 'start': timestamp},
     ),
   );
-  await _globalTestRuntime.send(
+  await _currentTestRuntime.send(
     RuntimeMessage(
       type: 'step_stop',
       data: <String, Object?>{
@@ -443,7 +456,7 @@ Future<T> step<T>(
   String name,
   FutureOr<T> Function(AllureStepContext step) body,
 ) async {
-  await _globalTestRuntime.send(
+  await _currentTestRuntime.send(
     RuntimeMessage(
       type: 'step_start',
       data: <String, Object?>{'name': name, 'start': currentTimestamp()},
@@ -452,7 +465,7 @@ Future<T> step<T>(
 
   try {
     final result = await body(const AllureStepContext());
-    await _globalTestRuntime.send(
+    await _currentTestRuntime.send(
       RuntimeMessage(
         type: 'step_stop',
         data: <String, Object?>{
@@ -463,7 +476,7 @@ Future<T> step<T>(
     );
     return result;
   } catch (error, stackTrace) {
-    await _globalTestRuntime.send(
+    await _currentTestRuntime.send(
       RuntimeMessage(
         type: 'step_stop',
         data: <String, Object?>{
@@ -485,7 +498,7 @@ class AllureStepContext {
 
   /// Overrides the display name of the current step.
   Future<void> displayName(String name) {
-    return _globalTestRuntime.send(
+    return _currentTestRuntime.send(
       RuntimeMessage(
         type: 'step_metadata',
         data: <String, Object?>{'name': name},
@@ -499,7 +512,7 @@ class AllureStepContext {
     Object? value, {
     AllureParameterMode? mode,
   }) {
-    return _globalTestRuntime.send(
+    return _currentTestRuntime.send(
       RuntimeMessage(
         type: 'step_metadata',
         data: <String, Object?>{

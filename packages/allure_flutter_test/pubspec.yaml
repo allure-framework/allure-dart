@@ -21,6 +21,7 @@ dependencies:
   # Version is pinned by the Flutter SDK's own flutter_test dependency, so
   # use `any` rather than a manually tracked constraint.
   leak_tracker_flutter_testing: any
+  test_api: any
 
 dev_dependencies:
   lints: ^5.1.1

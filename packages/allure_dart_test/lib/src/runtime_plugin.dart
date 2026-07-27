@@ -382,14 +382,18 @@ class AllureTestRuntimePlugin {
       ),
     ];
 
-    if (_testPlan != null &&
+    final excludedByTestPlan = _testPlan != null &&
         !includedInTestPlan(
           _testPlan,
           id: metadata.externalId,
           fullName: metadata.fullName,
           nativeSelector: metadata.nativeSelector,
           tags: metadata.rawTags,
-        )) {
+        );
+    if (excludedByTestPlan) {
+      // Plain installAllure() cannot declaration-skip package:test bodies; the
+      // skip label only suppresses the Allure result. Use the drop-in wrappers
+      // when excluded bodies must not run.
       addSkipLabel(labels);
     }
 
@@ -403,7 +407,9 @@ class AllureTestRuntimePlugin {
       parameters: metadata.parameters,
       scopeIds: scopeIds,
       defaultSuites: metadata.groupPath,
-      stage: metadata.skipped ? AllureStage.pending : AllureStage.running,
+      stage: metadata.skipped || excludedByTestPlan
+          ? AllureStage.pending
+          : AllureStage.running,
     );
 
     _uuidByTest[resolved.test] = testUuid;
