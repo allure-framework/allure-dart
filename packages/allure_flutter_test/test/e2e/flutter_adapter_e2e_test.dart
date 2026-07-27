@@ -485,6 +485,8 @@ Future<_FlutterSampleRun> _runFlutterSamples(
     environment['ALLURE_TESTPLAN_PATH'] = testPlanFile.path;
   }
 
+  // On Windows, `flutter` is `flutter.bat`. CreateProcess cannot start batch
+  // files directly, so the e2e harness must run through the shell there.
   final process = await Process.run(
     'flutter',
     <String>[
@@ -494,6 +496,7 @@ Future<_FlutterSampleRun> _runFlutterSamples(
     ],
     workingDirectory: packageRoot.path,
     environment: environment,
+    runInShell: Platform.isWindows,
   );
 
   final producedFiles = resultsDir.existsSync()
