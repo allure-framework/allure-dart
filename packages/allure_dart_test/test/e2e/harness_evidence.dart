@@ -10,6 +10,7 @@ class PreparedTestProject {
     required this.resultsDir,
     required this.sampleFile,
     required this.pubspecFile,
+    this.additionalSampleFiles = const <String, File>{},
     this.allureConfigFile,
     this.testPlanFile,
   });
@@ -18,6 +19,11 @@ class PreparedTestProject {
   final Directory resultsDir;
   final File sampleFile;
   final File pubspecFile;
+
+  /// Extra sample files copied into the project's `test/` directory, keyed
+  /// by their destination file name (used by multi-suite scenarios such as
+  /// concurrent test execution).
+  final Map<String, File> additionalSampleFiles;
   final File? allureConfigFile;
   final File? testPlanFile;
 }
@@ -63,6 +69,7 @@ Future<PreparedTestProject> prepareTestProject({
   required String tempPrefix,
   required File sampleSource,
   required String pubspecContents,
+  Map<String, File> additionalSampleSources = const <String, File>{},
   String resultsDirectoryRelativePath = 'allure-results',
   String? allureConfigContents,
   String? testPlanContents,
@@ -75,6 +82,10 @@ Future<PreparedTestProject> prepareTestProject({
     await testDir.create(recursive: true);
 
     final sampleFile = File(p.join(testDir.path, 'sample_test.dart'));
+    final additionalSampleFiles = <String, File>{
+      for (final fileName in additionalSampleSources.keys)
+        fileName: File(p.join(testDir.path, fileName)),
+    };
     final pubspecFile = File(p.join(tempDir.path, 'pubspec.yaml'));
     final allureConfigFile = allureConfigContents == null
         ? null
@@ -84,6 +95,9 @@ Future<PreparedTestProject> prepareTestProject({
         : File(p.join(tempDir.path, 'testplan.json'));
 
     await sampleSource.copy(sampleFile.path);
+    for (final entry in additionalSampleSources.entries) {
+      await entry.value.copy(additionalSampleFiles[entry.key]!.path);
+    }
     await pubspecFile.writeAsString(pubspecContents);
     final allureConfig = allureConfigContents;
     if (allureConfigFile != null && allureConfig != null) {
@@ -100,6 +114,7 @@ Future<PreparedTestProject> prepareTestProject({
 
     for (final file in <File>[
       sampleFile,
+      ...additionalSampleFiles.values,
       pubspecFile,
       if (allureConfigFile != null) allureConfigFile,
       if (testPlanFile != null) testPlanFile,
@@ -111,6 +126,7 @@ Future<PreparedTestProject> prepareTestProject({
       tempDir: tempDir,
       resultsDir: resultsDir,
       sampleFile: sampleFile,
+      additionalSampleFiles: additionalSampleFiles,
       pubspecFile: pubspecFile,
       allureConfigFile: allureConfigFile,
       testPlanFile: testPlanFile,

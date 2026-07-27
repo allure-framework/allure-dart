@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:allure_dart_commons/allure_dart_commons.dart';
-import 'package:allure_dart_test/adapter_support.dart' as adapter_support;
 import 'package:allure_dart_test/allure_dart_test.dart'
     show attachment, description, installAllure, step;
 import 'package:path/path.dart' as p;
@@ -13,6 +12,37 @@ void main() {
   installAllure();
 
   group('reference parity helpers', () {
+    test('classifies unexpected errors as broken despite test_api frames',
+        () async {
+      await description('''
+Verifies that non-assertion errors stay `broken` even when the stack includes `package:test_api` frames.
+
+A naive `package:test` substring check would also match `package:test_api`, which appears on every framework-mediated throw and would incorrectly collapse unexpected errors into `failed`.
+''');
+
+      await step('Classify a StateError whose stack mentions test_api', (_) {
+        final status = getStatusFromError(
+          StateError('boom'),
+          StackTrace.fromString(
+            '#0      main (file:///tmp/sample_test.dart:5:5)\n'
+            '#1      Declarer.test (package:test_api/src/backend/declarer.dart:253:25)\n',
+          ),
+        );
+        expect(status, AllureStatus.broken);
+      });
+
+      await step('Still classify matcher stack frames as failed', (_) {
+        final status = getStatusFromError(
+          Exception('nope'),
+          StackTrace.fromString(
+            '#0      expect (package:matcher/src/expect/expect.dart:65:3)\n'
+            '#1      main (file:///tmp/sample_test.dart:5:5)\n',
+          ),
+        );
+        expect(status, AllureStatus.failed);
+      });
+    });
+
     test('derives suite labels from title path hierarchy', () async {
       await description('''
 Verifies that generated suite labels follow the Allure hierarchy convention used by sibling adapters.
@@ -494,6 +524,140 @@ The lifecycle should preserve `testCaseName`, status classification flags, optio
       });
     });
 
+    test(
+        'keeps after-fixture metadata local to the fixture and out of the linked test',
+        () async {
+      await description('''
+Verifies that metadata emitted while an AFTER fixture is active stays local instead of propagating like before-fixture metadata does.
+
+The description and parameter set during an after fixture should be recorded directly on that fixture's entry inside the container, not on the container's shared scope-level fields. A label set during the same after fixture has no home on the fixture model, and none of this metadata may leak onto the linked test result.
+''');
+      final resultsDir = await step(
+        'Create isolated Allure results directory',
+        (_) => Directory.systemTemp.createTemp('allure_dart_reference_'),
+      );
+      addTearDown(() async {
+        if (resultsDir.existsSync()) {
+          await resultsDir.delete(recursive: true);
+        }
+      });
+
+      late Map<String, dynamic> result;
+      late Map<String, dynamic> container;
+
+      await step(
+        'Write after-fixture metadata, stop fixture, then run linked test',
+        (_) async {
+          final lifecycle = AllureLifecycle(
+            writer: AllureResultsWriter(outputDirectory: resultsDir.path),
+          );
+          final scopeId = lifecycle.ensureScope(
+            id: 'scope:after-fixture',
+            name: 'after fixture scope',
+            expectedChildrenCount: 1,
+          );
+          final fixtureUuid = lifecycle.startFixture(
+            scopeId: scopeId,
+            before: false,
+            name: 'tearDown',
+          );
+          await lifecycle.handleRuntimeMessage(
+            RuntimeMessage(
+              type: 'metadata',
+              data: <String, Object?>{
+                'description': 'after fixture notes',
+                'labels': <Map<String, String>>[
+                  const AllureLabel(name: 'owner', value: 'team-x').toJson(),
+                ],
+                'parameters': <Map<String, Object?>>[
+                  const AllureParameter(
+                    name: 'cleanupTarget',
+                    value: 'cache',
+                  ).toJson(),
+                ],
+              },
+            ),
+            rootUuid: fixtureUuid,
+          );
+          await lifecycle.stopFixture(
+            fixtureUuid,
+            status: AllureStatus.passed,
+          );
+
+          final testUuid = lifecycle.startTest(
+            name: 'after fixture linked test',
+            fullName: 'suite/file#after-fixture-linked',
+            scopeIds: <String>[scopeId],
+          );
+          await lifecycle.stopTest(testUuid, status: AllureStatus.passed);
+          await lifecycle.writeTest(testUuid);
+
+          final resultFile = resultsDir
+              .listSync()
+              .whereType<File>()
+              .singleWhere((file) => file.path.endsWith('-result.json'));
+          final containerFile = resultsDir
+              .listSync()
+              .whereType<File>()
+              .singleWhere((file) => file.path.endsWith('-container.json'));
+          result =
+              jsonDecode(resultFile.readAsStringSync()) as Map<String, dynamic>;
+          container = jsonDecode(containerFile.readAsStringSync())
+              as Map<String, dynamic>;
+
+          await _attachDirectoryFiles(resultsDir);
+        },
+      );
+
+      await step('Verify after-fixture metadata stays local', (_) async {
+        final afters = container['afters'] as List<dynamic>;
+        await _verifyValue(
+          'Verify container has exactly one after fixture',
+          expected: 1,
+          actual: afters.length,
+        );
+        final afterFixture = afters.single as Map<String, dynamic>;
+        await _verifyValue(
+          'Verify after-fixture description is recorded on the fixture',
+          expected: 'after fixture notes',
+          actual: afterFixture['description'],
+        );
+        await _verifyContains(
+          'Verify after-fixture parameter is recorded on the fixture',
+          expectedValue: const AllureParameter(
+            name: 'cleanupTarget',
+            value: 'cache',
+          ).toJson(),
+          actualValues: afterFixture['parameters'] as List<dynamic>,
+        );
+        await _verifyValue(
+          'Verify container description stays unset '
+          '(only before fixtures propagate to the scope)',
+          expected: null,
+          actual: container['description'],
+        );
+        await _verifyValue(
+          'Verify linked test description stays unset',
+          expected: null,
+          actual: result['description'],
+        );
+        await _verifyNotContains(
+          'Verify after-fixture parameter did not leak onto the linked test',
+          unexpectedValue: const AllureParameter(
+            name: 'cleanupTarget',
+            value: 'cache',
+          ).toJson(),
+          actualValues: result['parameters'] as List<dynamic>,
+        );
+        await _verifyNotContains(
+          'Verify after-fixture label did not leak onto the linked test',
+          unexpectedValue:
+              const AllureLabel(name: 'owner', value: 'team-x').toJson(),
+          actualValues: result['labels'] as List<dynamic>,
+        );
+      });
+    });
+
     test('notifies lifecycle listeners without aborting operations', () async {
       await description('''
 Verifies that lifecycle listeners can observe and mutate mutable lifecycle state, and that listener failures are isolated from reporting operations.
@@ -713,7 +877,7 @@ The parser should warn and return `null` so callers can continue without filteri
 
       await step('Verify invalid test plans are ignored', (_) {
         expect(
-          adapter_support.parseTestPlan(
+          parseTestPlan(
             <String, String>{
               'ALLURE_TESTPLAN_PATH': p.join(tempDir.path, 'missing.json'),
             },
@@ -721,7 +885,7 @@ The parser should warn and return `null` so callers can continue without filteri
           isNull,
         );
         expect(
-          adapter_support.parseTestPlan(
+          parseTestPlan(
             <String, String>{
               'ALLURE_TESTPLAN_PATH': p.join(tempDir.path, 'invalid.json'),
             },
@@ -729,7 +893,7 @@ The parser should warn and return `null` so callers can continue without filteri
           isNull,
         );
         expect(
-          adapter_support.parseTestPlan(
+          parseTestPlan(
             <String, String>{
               'ALLURE_TESTPLAN_PATH': p.join(
                 tempDir.path,
@@ -740,7 +904,7 @@ The parser should warn and return `null` so callers can continue without filteri
           isNull,
         );
         expect(
-          adapter_support.parseTestPlan(
+          parseTestPlan(
             <String, String>{
               'ALLURE_TESTPLAN_PATH': p.join(
                 tempDir.path,
@@ -918,6 +1082,23 @@ Future<void> _verifyContains(
           expectedMatcher.matches(actualValue, <Object?, Object?>{}),
     );
     expect(found, isTrue);
+  });
+}
+
+Future<void> _verifyNotContains(
+  String name, {
+  required Object? unexpectedValue,
+  required List<dynamic> actualValues,
+}) {
+  return step(name, (check) async {
+    await check.parameter('unexpected', unexpectedValue);
+    await check.parameter('actual', actualValues);
+    final unexpectedMatcher = equals(unexpectedValue);
+    final found = actualValues.any(
+      (actualValue) =>
+          unexpectedMatcher.matches(actualValue, <Object?, Object?>{}),
+    );
+    expect(found, isFalse);
   });
 }
 

@@ -53,12 +53,17 @@ class AllureResultsWriter {
 
   final Directory _outputDirectory;
   final Uuid _uuid;
+  bool _initialized = false;
 
   /// Ensures the output directory exists.
   Future<void> ensureInitialized() async {
+    if (_initialized) {
+      return;
+    }
     if (!_outputDirectory.existsSync()) {
       await _outputDirectory.create(recursive: true);
     }
+    _initialized = true;
   }
 
   /// Writes a test result JSON file.

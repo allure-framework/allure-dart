@@ -80,11 +80,14 @@ AllureStatus getStatusFromError(Object error, [StackTrace? stackTrace]) {
         value.contains('testfailure');
   }
 
+  // Match `package:test/` and `package:matcher/`, but not `package:test_api/`
+  // which appears on stacks for every framework-mediated throw (including
+  // unexpected non-assertion errors that must stay `broken`).
   if (containsAssertionSignal(typeName) ||
       containsAssertionSignal(message) ||
       message.contains('expected:') ||
-      trace.contains('package:matcher') ||
-      trace.contains('package:test') ||
+      trace.contains('package:matcher/') ||
+      trace.contains('package:test/') ||
       _hasDynamicField(error, 'matcherResult') ||
       _hasDynamicField(error, 'actual') ||
       _hasDynamicField(error, 'expected')) {

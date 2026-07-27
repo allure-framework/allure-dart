@@ -50,6 +50,53 @@ void main() {
       isTrue,
     );
     expect(integrationResults.every(_hasSteps), isTrue);
+
+    // Regression guard: `fullName` must point at the user test file
+    // (`integration_binding_smoke_test.dart`) and never at the adapter's own
+    // `integration_test.dart` wrapper, even though that wrapper sits on the
+    // stack above `flutter_test_drop_in.dart` for host-run integration
+    // tests.
+    expect(
+      integrationResults.every(
+        (result) =>
+            (result['fullName'] as String?)
+                ?.contains('integration_binding_smoke_test.dart') ??
+            false,
+      ),
+      isTrue,
+    );
+    expect(
+      integrationResults.any(
+        (result) =>
+            (result['fullName'] as String?)
+                ?.contains('integration_test.dart') ??
+            false,
+      ),
+      isFalse,
+    );
+    expect(
+      integrationResults.every(
+        (result) => _hasLabel(
+          result['labels'] as List<dynamic>,
+          name: 'package',
+          value: 'test/integration_binding_smoke_test.dart',
+        ),
+      ),
+      isTrue,
+    );
+    expect(
+      integrationResults.any(
+        (result) => (result['labels'] as List<dynamic>).any(
+          (label) =>
+              label is Map &&
+              <Object?>['suite', 'parentSuite', 'subSuite', 'package']
+                  .contains(label['name']?.toString()) &&
+              (label['value']?.toString().contains('integration_test.dart') ??
+                  false),
+        ),
+      ),
+      isFalse,
+    );
   });
 
   testWidgets('labels integration binding tests', (tester) async {

@@ -1,9 +1,10 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
 import 'package:allure_dart_commons/allure_dart_commons.dart';
+
+final _stackTraceFilePathPattern = RegExp(r'(file:///[^\s)]+\.dart)');
 
 /// Metadata derived from a `package:test` declaration or runtime test.
 class PackageTestMetadata {
@@ -252,7 +253,7 @@ String? resolvePackageTestPathFromDeclaration({
 
   final trace = stackTrace ?? StackTrace.current;
   for (final line in trace.toString().split('\n')) {
-    final match = RegExp(r'(file:///[^\s)]+\.dart)').firstMatch(line);
+    final match = _stackTraceFilePathPattern.firstMatch(line);
     if (match == null) {
       continue;
     }
@@ -289,28 +290,52 @@ String? packageTestPathFromUri(Uri? uri) {
   return serialized.isEmpty ? null : serialized;
 }
 
+final _packageTestPathByAbsoluteFilePath = <String, String>{};
+
 /// Converts a file path to a package-root-relative path when possible.
 String packageTestPathFromFilePath(String filePath) {
   final absoluteFilePath = p.normalize(p.absolute(filePath));
-  final packageRoot = _findPackageRoot(absoluteFilePath);
-  if (packageRoot == null) {
-    return getRelativePath(filePath);
+  final cached = _packageTestPathByAbsoluteFilePath[absoluteFilePath];
+  if (cached != null) {
+    return cached;
   }
-  return getPosixPath(p.relative(absoluteFilePath, from: packageRoot));
+
+  final packageRoot = _findPackageRoot(absoluteFilePath);
+  final result = packageRoot == null
+      ? getRelativePath(filePath)
+      : getPosixPath(p.relative(absoluteFilePath, from: packageRoot));
+  _packageTestPathByAbsoluteFilePath[absoluteFilePath] = result;
+  return result;
 }
 
+final _packageRootByDirectory = <String, String?>{};
+
 String? _findPackageRoot(String filePath) {
+  final visitedDirectories = <String>[];
   var directory = p.dirname(filePath);
+  String? result;
   while (true) {
+    if (_packageRootByDirectory.containsKey(directory)) {
+      result = _packageRootByDirectory[directory];
+      break;
+    }
+    visitedDirectories.add(directory);
     if (File(p.join(directory, 'pubspec.yaml')).existsSync()) {
-      return directory;
+      result = directory;
+      break;
     }
     final parent = p.dirname(directory);
     if (parent == directory) {
-      return null;
+      result = null;
+      break;
     }
     directory = parent;
   }
+
+  for (final visited in visitedDirectories) {
+    _packageRootByDirectory[visited] = result;
+  }
+  return result;
 }
 
 bool _isAdapterLibrary(
@@ -369,6 +394,13 @@ class ExtractedMetadata {
   final List<AllureLink> links;
 }
 
+final _allureIdAnnotationPattern = RegExp(r'@allure\.id[:=]([^\s]+)');
+final _allureLabelAnnotationPattern =
+    RegExp(r'@allure\.label\.([^:=\s]+)[:=]([^\s]+)');
+final _allureLinkAnnotationPattern =
+    RegExp(r'@allure\.link\.([^:=\s]+)[:=]([^\s]+)');
+final _allureNameAnnotationPattern = RegExp(r'@allure\.name[:=]([^\s].*?)$');
+
 /// Extracts Allure metadata annotations from [text].
 ExtractedMetadata extractMetadataFromString(String text) {
   final labels = <AllureLabel>[];
@@ -378,19 +410,19 @@ ExtractedMetadata extractMetadataFromString(String text) {
   var clean = text;
 
   final patterns = <RegExp, void Function(RegExpMatch)>{
-    RegExp(r'@allure\.id[:=]([^\s]+)'): (match) {
+    _allureIdAnnotationPattern: (match) {
       explicitAllureId = match.group(1);
       labels.add(AllureLabel(name: 'ALLURE_ID', value: match.group(1)!));
     },
-    RegExp(r'@allure\.label\.([^:=\s]+)[:=]([^\s]+)'): (match) {
+    _allureLabelAnnotationPattern: (match) {
       labels.add(AllureLabel(name: match.group(1)!, value: match.group(2)!));
     },
-    RegExp(r'@allure\.link\.([^:=\s]+)[:=]([^\s]+)'): (match) {
+    _allureLinkAnnotationPattern: (match) {
       final linkType = match.group(1);
       final value = match.group(2)!;
       links.add(AllureLink(url: value, type: linkType));
     },
-    RegExp(r'@allure\.name[:=]([^\s].*?)$'): (match) {
+    _allureNameAnnotationPattern: (match) {
       explicitDisplayName = match.group(1)?.trim();
     },
   };
@@ -413,139 +445,4 @@ ExtractedMetadata extractMetadataFromString(String text) {
     labels: labels,
     links: links,
   );
-}
-
-/// Single entry in an Allure test plan.
-class TestPlanEntry {
-  /// Creates a test plan entry.
-  const TestPlanEntry({this.id, this.selector});
-
-  /// Optional Allure id to match.
-  final Object? id;
-
-  /// Optional full-name or native selector to match.
-  final String? selector;
-}
-
-/// Parsed Allure test plan version 1.
-class TestPlanV1 {
-  /// Creates a test plan.
-  const TestPlanV1({required this.tests});
-
-  /// Entries included in the test plan.
-  final List<TestPlanEntry> tests;
-}
-
-/// Parses an Allure test plan from `ALLURE_TESTPLAN_PATH`.
-TestPlanV1? parseTestPlan([Map<String, String>? environment]) {
-  final source = environment ?? Platform.environment;
-  final path = source['ALLURE_TESTPLAN_PATH'];
-  if (path == null || path.isEmpty) {
-    return null;
-  }
-
-  final file = File(path);
-  if (!file.existsSync()) {
-    stderr.writeln('Allure: test plan file does not exist: $path');
-    return null;
-  }
-
-  try {
-    final decoded = jsonDecode(file.readAsStringSync());
-    if (decoded is! Map<String, dynamic>) {
-      stderr.writeln('Allure: test plan root must be a JSON object: $path');
-      return null;
-    }
-    final version = decoded['version'];
-    if (version != null && version.toString() != '1.0') {
-      stderr.writeln('Allure: unsupported test plan version: $version');
-      return null;
-    }
-    final tests = decoded['tests'];
-    if (tests is! List) {
-      stderr.writeln('Allure: test plan does not contain a tests array');
-      return null;
-    }
-    final entries = tests
-        .whereType<Map>()
-        .where((entry) {
-          final hasId = entry['id'] != null;
-          final hasSelector = entry['selector'] != null &&
-              entry['selector'].toString().isNotEmpty;
-          if (!hasId && !hasSelector) {
-            stderr.writeln('Allure: ignoring malformed test plan entry');
-          }
-          return hasId || hasSelector;
-        })
-        .map(
-          (entry) => TestPlanEntry(
-            id: entry['id'],
-            selector: entry['selector']?.toString(),
-          ),
-        )
-        .toList();
-    if (entries.isEmpty) {
-      return null;
-    }
-    return TestPlanV1(tests: entries);
-  } catch (error) {
-    stderr.writeln('Allure: unable to parse test plan: $error');
-    return null;
-  }
-}
-
-/// Whether a test identified by id, selector, or tags is included in [plan].
-bool includedInTestPlan(
-  TestPlanV1 plan, {
-  String? id,
-  String? fullName,
-  String? nativeSelector,
-  Iterable<String>? tags,
-}) {
-  final effectiveId = id ?? _extractAllureIdFromTags(tags);
-
-  for (final entry in plan.tests) {
-    final idMatched = effectiveId != null &&
-        entry.id != null &&
-        entry.id.toString() == effectiveId;
-    final selectorMatched = fullName != null &&
-        entry.selector != null &&
-        entry.selector == fullName;
-    final nativeSelectorMatched = nativeSelector != null &&
-        entry.selector != null &&
-        entry.selector == nativeSelector;
-    if (idMatched || selectorMatched || nativeSelectorMatched) {
-      return true;
-    }
-  }
-  return false;
-}
-
-/// Extracts an Allure id from tag expressions.
-String? extractAllureIdFromTags(Iterable<String>? tags) {
-  return _extractAllureIdFromTags(tags);
-}
-
-/// Adds the Allure test-plan skip marker to [labels].
-void addSkipLabel(List<AllureLabel> labels) {
-  labels.add(const AllureLabel(name: allureTestPlanSkipLabel, value: 'true'));
-}
-
-String? _extractAllureIdFromTags(Iterable<String>? tags) {
-  if (tags == null) {
-    return null;
-  }
-  final expressions = <RegExp>[
-    RegExp(r'^@allure\.id=(.+)$'),
-    RegExp(r'^@allure\.id:(.+)$'),
-  ];
-  for (final tag in tags) {
-    for (final expression in expressions) {
-      final match = expression.firstMatch(tag);
-      if (match != null) {
-        return match.group(1);
-      }
-    }
-  }
-  return null;
 }

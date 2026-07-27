@@ -21,11 +21,24 @@ class PackageTestScopeRegistry {
   String? get currentPackagePath =>
       _declarationStack.isEmpty ? null : _declarationStack.last.packagePath;
 
+  /// Whether any group on the current declaration-time path is skipped.
+  bool get isCurrentPathSkipped =>
+      _declarationStack.any((group) => group.skipped);
+
   /// Pushes a group onto the declaration stack.
-  void pushGroup(String name, {required String? packagePath}) {
+  void pushGroup(
+    String name, {
+    required String? packagePath,
+    bool skipped = false,
+  }) {
     final resolvedPackagePath = packagePath ?? currentPackagePath;
+    final resolvedSkipped = skipped || isCurrentPathSkipped;
     _declarationStack.add(
-      _DeclaredGroup(name: name, packagePath: resolvedPackagePath),
+      _DeclaredGroup(
+        name: name,
+        packagePath: resolvedPackagePath,
+        skipped: resolvedSkipped,
+      ),
     );
     _scopeForPath(
       currentPath,
@@ -47,8 +60,9 @@ class PackageTestScopeRegistry {
       const <String>[],
       packagePath: resolvedPackagePath,
     ).expectedChildrenCount++;
-    for (var index = 0; index < _declarationStack.length; index++) {
-      final path = currentPath.take(index + 1).toList();
+    final path = <String>[];
+    for (final group in _declarationStack) {
+      path.add(group.name);
       _scopeForPath(path, packagePath: resolvedPackagePath)
           .expectedChildrenCount++;
     }
@@ -97,10 +111,12 @@ class _DeclaredGroup {
   _DeclaredGroup({
     required this.name,
     required this.packagePath,
+    this.skipped = false,
   });
 
   final String name;
   final String? packagePath;
+  final bool skipped;
 }
 
 class _DeclaredScope {

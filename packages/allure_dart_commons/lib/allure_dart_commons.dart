@@ -6,5 +6,6 @@ export 'src/config.dart';
 export 'src/lifecycle.dart';
 export 'src/model.dart';
 export 'src/runtime.dart';
+export 'src/test_plan.dart';
 export 'src/utils.dart';
 export 'src/writer.dart';

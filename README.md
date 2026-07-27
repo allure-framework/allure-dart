@@ -246,6 +246,15 @@ ALLURE_TESTPLAN_PATH=testplan.json dart test
 
 Entries can match by Allure ID or by the test selector produced by the adapter.
 
+> **Skip vs. test plans:** a plain declaration `skip: true` is a different
+> mechanism from test-plan exclusion, and it behaves differently depending on
+> whether a suite uses the drop-in import or plain `installAllure()` with the
+> original framework imports. See the "Skip Semantics" notes in the
+> [`allure_dart_test`](packages/allure_dart_test/README.md#skip-semantics) and
+> [`allure_flutter_test`](packages/allure_flutter_test/README.md#skip-semantics)
+> READMEs for the exact tradeoffs, including the drop-in group-skip fixture
+> tradeoff.
+
 ## Advanced Runtime And Lifecycle APIs
 
 `allure_dart_commons` exposes low-level APIs for custom adapters and advanced

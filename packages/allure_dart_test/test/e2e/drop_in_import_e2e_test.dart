@@ -233,6 +233,109 @@ void main() {
       });
     });
 
+    test(
+        'derives tag and suite hierarchy labels for nested groups through drop-in import',
+        () async {
+      final run =
+          await _runDropInSample(sampleName: 'tags_and_suite_sample.dart');
+
+      await harnessStep(
+          'Verify native tags become a tag label and nested groups become suite labels',
+          () {
+        expect(run.exitCode, 0, reason: run.output);
+        expect(run.resultFiles, hasLength(1));
+
+        final result = run.results.single;
+        _expectRuntimeBaseResultFields(
+          result,
+          expectedName: 'tagged nested test',
+          expectedTitlePath: const [
+            'test',
+            'sample_test.dart',
+            'outer group',
+            'inner group',
+            'deepest group',
+          ],
+        );
+        expect(result['status'], 'passed');
+        expect(
+          result['labels'],
+          containsAll(<Map<String, String>>[
+            {'name': 'tag', 'value': 'smoke'},
+            {'name': 'parentSuite', 'value': 'outer group'},
+            {'name': 'suite', 'value': 'inner group'},
+            {'name': 'subSuite', 'value': 'deepest group'},
+          ]),
+        );
+      });
+    });
+
+    test('passes testOn and onPlatform through the drop-in wrapper', () async {
+      final run = await _runDropInSample(
+        sampleName: 'platform_passthrough_sample.dart',
+      );
+
+      await harnessStep(
+          'Verify testOn/onPlatform passthrough still writes a passed result',
+          () {
+        expect(run.exitCode, 0, reason: run.output);
+        expect(run.resultFiles, hasLength(1));
+
+        final result = run.results.single;
+        _expectRuntimeBaseResultFields(
+          result,
+          expectedName: 'drop in platform passthrough sample',
+        );
+        expect(result['status'], 'passed');
+      });
+    });
+
+    test('writes a skipped result for a declaration-skipped test', () async {
+      final run = await _runDropInSample(
+        sampleName: 'declaration_skip_sample.dart',
+      );
+
+      await harnessStep(
+          'Verify declaration `skip: true` still writes a pending, skipped result',
+          () {
+        expect(run.exitCode, 0, reason: run.output);
+        expect(run.resultFiles, hasLength(1));
+
+        final result = run.results.single;
+        _expectRuntimeBaseResultFields(
+          result,
+          expectedName: 'drop in declaration skip sample',
+          expectedStage: 'pending',
+        );
+        expect(result['status'], 'skipped');
+      });
+    });
+
+    test('writes a skipped result for a test nested in a skipped group',
+        () async {
+      final run = await _runDropInSample(sampleName: 'group_skip_sample.dart');
+
+      await harnessStep(
+          'Verify a group-level skip still schedules and skips nested tests',
+          () {
+        expect(run.exitCode, 0, reason: run.output);
+        expect(run.resultFiles, hasLength(1));
+
+        final result = run.results.single;
+        _expectRuntimeBaseResultFields(
+          result,
+          expectedName: 'nested test in skipped group',
+          expectedStage: 'pending',
+          expectedTitlePath: const [
+            'test',
+            'sample_test.dart',
+            'drop in skipped group',
+          ],
+        );
+        expect(result['status'], 'skipped');
+      });
+    });
+
     test('skips test-plan excluded tests before the body runs', () async {
       final run = await _runDropInSample(
         sampleName: 'test_plan_sample.dart',

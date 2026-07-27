@@ -75,6 +75,51 @@ void main() {
         ),
       );
     }
+
+    final skippedResults =
+        results.where((result) => result['name'] == 'is skipped explicitly');
+    expect(skippedResults, hasLength(1));
+    final skippedResult = skippedResults.single;
+    expect(skippedResult['status'], 'skipped');
+    expect(skippedResult['stage'], 'pending');
+
+    final fixtureTestResults = results
+        .where((result) => result['name'] == 'runs with setUp and tearDown')
+        .toList();
+    expect(fixtureTestResults, hasLength(1));
+    final fixtureTestUuid = fixtureTestResults.single['uuid'] as String;
+
+    final containerFiles = resultsDir
+        .listSync()
+        .whereType<File>()
+        .where((file) => file.path.endsWith('-container.json'))
+        .toList();
+    expect(containerFiles, isNotEmpty);
+    final containers = containerFiles
+        .map((file) =>
+            jsonDecode(file.readAsStringSync()) as Map<String, dynamic>)
+        .toList();
+
+    final fixtureContainers = containers
+        .where((container) =>
+            (container['children'] as List<dynamic>).contains(fixtureTestUuid))
+        .toList();
+    expect(
+      fixtureContainers,
+      isNotEmpty,
+      reason: 'expected at least one container linking to the fixture test',
+    );
+    final linkedBefores = fixtureContainers
+        .expand((container) => container['befores'] as List<dynamic>)
+        .cast<Map<String, dynamic>>();
+    final linkedAfters = fixtureContainers
+        .expand((container) => container['afters'] as List<dynamic>)
+        .cast<Map<String, dynamic>>();
+    expect(linkedBefores.any((fixture) => fixture['name'] == 'setUp'), isTrue);
+    expect(
+      linkedAfters.any((fixture) => fixture['name'] == 'tearDown'),
+      isTrue,
+    );
   });
 
   group('drop-in smoke', () {
@@ -102,6 +147,34 @@ void main() {
         ));
 
         expect(find.text('hello'), findsOneWidget);
+      });
+    });
+
+    test(
+      'is skipped explicitly',
+      () {
+        fail('declaration-skipped test body must not run');
+      },
+      skip: true,
+    );
+  });
+
+  group('fixture smoke', () {
+    var setUpCalls = 0;
+    var tearDownCalls = 0;
+
+    setUp(() {
+      setUpCalls++;
+    });
+
+    tearDown(() {
+      tearDownCalls++;
+    });
+
+    test('runs with setUp and tearDown', () async {
+      await step('verify fixtures ran before the test body', (_) async {
+        expect(setUpCalls, equals(1));
+        expect(tearDownCalls, equals(0));
       });
     });
   });
