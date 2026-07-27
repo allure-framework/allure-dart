@@ -43,6 +43,166 @@ A naive `package:test` substring check would also match `package:test_api`, whic
       });
     });
 
+    test('lets env and config overrides replace automatic adapter labels',
+        () async {
+      await description('''
+Verifies issue #12 and the same override rule for the rest of the adapter-generated
+singleton label set (`framework`, `language`, `host`, `thread`, `package`,
+`testClass`, `testMethod`).
+
+Automatic values must not survive alongside an env or config override with the
+same name. Multi-value labels such as `tag` must still be allowed to repeat.
+''');
+
+      await step('Prefer ALLURE_LABEL_* when building host/thread helpers', (_) {
+        expect(
+          getHostLabel(<String, String>{'ALLURE_LABEL_host': 'ci-runner-01'})
+              .value,
+          'ci-runner-01',
+        );
+        expect(
+          getThreadLabel(
+            null,
+            <String, String>{'ALLURE_LABEL_thread': 'worker-7'},
+          ).value,
+          'worker-7',
+        );
+      });
+
+      await step(
+        'Collapse singleton labels keeps last override, preserves tag repeats',
+        (_) {
+          final collapsed = collapseSingletonLabels(<AllureLabel>[
+            const AllureLabel(name: 'framework', value: 'dart-test'),
+            const AllureLabel(name: 'language', value: 'dart'),
+            const AllureLabel(name: 'host', value: 'auto-host'),
+            const AllureLabel(name: 'tag', value: 'a'),
+            const AllureLabel(name: 'thread', value: 'pid-1'),
+            const AllureLabel(name: 'package', value: 'test/auto.dart'),
+            const AllureLabel(name: 'testClass', value: 'AutoClass'),
+            const AllureLabel(name: 'testMethod', value: 'autoMethod'),
+            const AllureLabel(name: 'framework', value: 'custom-framework'),
+            const AllureLabel(name: 'language', value: 'custom-lang'),
+            const AllureLabel(name: 'host', value: 'ci-runner-01'),
+            const AllureLabel(name: 'tag', value: 'b'),
+            const AllureLabel(name: 'thread', value: 'worker-7'),
+            const AllureLabel(name: 'package', value: 'custom/package.dart'),
+            const AllureLabel(name: 'testClass', value: 'CustomClass'),
+            const AllureLabel(name: 'testMethod', value: 'customMethod'),
+          ]);
+          expect(
+            _labelPairs(collapsed),
+            <String>[
+              'tag=a',
+              'framework=custom-framework',
+              'language=custom-lang',
+              'host=ci-runner-01',
+              'tag=b',
+              'thread=worker-7',
+              'package=custom/package.dart',
+              'testClass=CustomClass',
+              'testMethod=customMethod',
+            ],
+          );
+          expect(
+            singletonAutomaticLabelNames,
+            <String>{
+              'framework',
+              'language',
+              'host',
+              'thread',
+              'package',
+              'testClass',
+              'testMethod',
+            },
+          );
+        },
+      );
+
+      final resultsDir = await step(
+        'Create isolated Allure results directory',
+        (_) => Directory.systemTemp.createTemp('allure_dart_label_override_'),
+      );
+      addTearDown(() async {
+        if (resultsDir.existsSync()) {
+          await resultsDir.delete(recursive: true);
+        }
+      });
+
+      late Map<String, dynamic> result;
+
+      await step(
+        'Write a result with automatic adapter labels then config overrides',
+        (_) async {
+          final lifecycle = AllureLifecycle(
+            writer: AllureResultsWriter(outputDirectory: resultsDir.path),
+            // Simulates config / late-applied override labels that land after
+            // the automatic adapter labels added at startTest.
+            globalLabels: const <AllureLabel>[
+              AllureLabel(name: 'framework', value: 'custom-framework'),
+              AllureLabel(name: 'language', value: 'custom-lang'),
+              AllureLabel(name: 'host', value: 'ci-runner-01'),
+              AllureLabel(name: 'thread', value: 'worker-7'),
+              AllureLabel(name: 'package', value: 'custom/package.dart'),
+              AllureLabel(name: 'testClass', value: 'CustomClass'),
+              AllureLabel(name: 'testMethod', value: 'customMethod'),
+            ],
+          );
+          final testUuid = lifecycle.startTest(
+            name: 'override labels',
+            fullName: 'suite/file#override-labels',
+            labels: <AllureLabel>[
+              const AllureLabel(name: 'framework', value: 'dart-test'),
+              const AllureLabel(name: 'language', value: 'dart'),
+              const AllureLabel(name: 'host', value: 'auto-host'),
+              const AllureLabel(name: 'thread', value: 'pid-1'),
+              const AllureLabel(name: 'package', value: 'test/auto.dart'),
+              const AllureLabel(name: 'testClass', value: 'AutoClass'),
+              const AllureLabel(name: 'testMethod', value: 'autoMethod'),
+              const AllureLabel(name: 'tag', value: 'keep-me'),
+            ],
+          );
+          await lifecycle.stopTest(testUuid, status: AllureStatus.passed);
+          await lifecycle.writeTest(testUuid);
+
+          final resultFile = resultsDir
+              .listSync()
+              .whereType<File>()
+              .singleWhere((file) => file.path.endsWith('-result.json'));
+          result =
+              jsonDecode(resultFile.readAsStringSync()) as Map<String, dynamic>;
+          await _attachDirectoryFiles(resultsDir);
+        },
+      );
+
+      await step('Verify each singleton label keeps only the override', (_) {
+        final labels = (result['labels'] as List<dynamic>)
+            .cast<Map<String, dynamic>>();
+        for (final entry in <String, String>{
+          'framework': 'custom-framework',
+          'language': 'custom-lang',
+          'host': 'ci-runner-01',
+          'thread': 'worker-7',
+          'package': 'custom/package.dart',
+          'testClass': 'CustomClass',
+          'testMethod': 'customMethod',
+        }.entries) {
+          final values = labels
+              .where((label) => label['name'] == entry.key)
+              .map((label) => label['value'])
+              .toList();
+          expect(values, <String>[entry.value],
+              reason: 'expected a single ${entry.key} override');
+        }
+        expect(
+          labels.any(
+            (label) => label['name'] == 'tag' && label['value'] == 'keep-me',
+          ),
+          isTrue,
+        );
+      });
+    });
+
     test('derives suite labels from title path hierarchy', () async {
       await description('''
 Verifies that generated suite labels follow the Allure hierarchy convention used by sibling adapters.
