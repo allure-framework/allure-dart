@@ -258,6 +258,23 @@ Entries can match by Allure ID or by the test selector produced by the adapter.
 > READMEs for the exact tradeoffs, including the drop-in group-skip fixture
 > tradeoff.
 
+## Browser Support
+
+`allure_dart_commons` can load on browser platforms without accessing
+`Platform.environment`. Environment labels use an empty environment map, and
+automatic host and thread labels use browser-safe values.
+
+Writing `allure-results`, reading config files, and reading test plans require
+local filesystem access. Browser calls that write results fail with a clear
+Allure filesystem error. Pass explicit environment values where needed, or run
+result-producing tests on a VM or desktop platform.
+
+Compile the browser smoke entry point with:
+
+```bash
+dart compile js scripts/browser_compile_smoke.dart -o /tmp/allure_commons.js
+```
+
 ## Advanced Runtime And Lifecycle APIs
 
 `allure_dart_commons` exposes low-level APIs for custom adapters and advanced

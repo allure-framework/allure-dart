@@ -1,8 +1,8 @@
-import 'dart:io';
-
 import 'package:path/path.dart' as p;
 
 import 'package:allure_dart_commons/allure_dart_commons.dart';
+
+import 'package_root.dart';
 
 final _stackTraceFilePathPattern = RegExp(r'(file:///[^\s)]+\.dart)');
 
@@ -311,30 +311,12 @@ String packageTestPathFromFilePath(String filePath) {
 final _packageRootByDirectory = <String, String?>{};
 
 String? _findPackageRoot(String filePath) {
-  final visitedDirectories = <String>[];
-  var directory = p.dirname(filePath);
-  String? result;
-  while (true) {
-    if (_packageRootByDirectory.containsKey(directory)) {
-      result = _packageRootByDirectory[directory];
-      break;
-    }
-    visitedDirectories.add(directory);
-    if (File(p.join(directory, 'pubspec.yaml')).existsSync()) {
-      result = directory;
-      break;
-    }
-    final parent = p.dirname(directory);
-    if (parent == directory) {
-      result = null;
-      break;
-    }
-    directory = parent;
+  final directory = p.dirname(filePath);
+  if (_packageRootByDirectory.containsKey(directory)) {
+    return _packageRootByDirectory[directory];
   }
-
-  for (final visited in visitedDirectories) {
-    _packageRootByDirectory[visited] = result;
-  }
+  final result = findPackageRoot(directory);
+  _packageRootByDirectory[directory] = result;
   return result;
 }
 

@@ -1,7 +1,8 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'model.dart';
+import 'platform.dart';
+import 'test_plan_loader.dart';
 import 'utils.dart';
 
 /// Single entry in an Allure test plan.
@@ -26,7 +27,7 @@ class TestPlanV1 {
 }
 
 // Cache keyed by the resolved `ALLURE_TESTPLAN_PATH` value (or a sentinel
-// when unset/empty). Only populated for the `Platform.environment` lookup
+// when unset/empty). Only populated for the platform environment lookup
 // path, since that value is immutable for the lifetime of the process.
 const _noTestPlanPathSentinel = '\u0000';
 final _testPlanCache = <String, TestPlanV1?>{};
@@ -39,7 +40,7 @@ final _testPlanCache = <String, TestPlanV1?>{};
 /// writes that cache.
 TestPlanV1? parseTestPlan([Map<String, String>? environment]) {
   final usesProcessEnvironment = environment == null;
-  final source = environment ?? Platform.environment;
+  final source = environment ?? allureEnvironment;
   final path = source['ALLURE_TESTPLAN_PATH'];
 
   if (usesProcessEnvironment) {
@@ -61,28 +62,27 @@ TestPlanV1? _parseTestPlanFromPath(String? path) {
     return null;
   }
 
-  final file = File(path);
-  if (!file.existsSync()) {
-    stderr.writeln('Allure: test plan file does not exist: $path');
+  final contents = loadTestPlanContents(path);
+  if (contents == null) {
     return null;
   }
 
   try {
-    final decoded = jsonDecode(file.readAsStringSync());
+    final decoded = jsonDecode(contents);
     if (decoded is! Map<String, dynamic>) {
-      stderr.writeln('Allure: test plan root must be a JSON object: $path');
+      allureLogWarning('Allure: test plan root must be a JSON object: $path');
       return null;
     }
     final version = decoded['version'];
     if (version == null || version.toString() != '1.0') {
-      stderr.writeln(
+      allureLogWarning(
         'Allure: unsupported or missing test plan version: $version',
       );
       return null;
     }
     final tests = decoded['tests'];
     if (tests is! List) {
-      stderr.writeln('Allure: test plan does not contain a tests array');
+      allureLogWarning('Allure: test plan does not contain a tests array');
       return null;
     }
     final entries = tests
@@ -92,7 +92,7 @@ TestPlanV1? _parseTestPlanFromPath(String? path) {
           final hasSelector = entry['selector'] != null &&
               entry['selector'].toString().isNotEmpty;
           if (!hasId && !hasSelector) {
-            stderr.writeln('Allure: ignoring malformed test plan entry');
+            allureLogWarning('Allure: ignoring malformed test plan entry');
           }
           return hasId || hasSelector;
         })
@@ -110,7 +110,7 @@ TestPlanV1? _parseTestPlanFromPath(String? path) {
     }
     return TestPlanV1(tests: entries);
   } catch (error) {
-    stderr.writeln('Allure: unable to parse test plan: $error');
+    allureLogWarning('Allure: unable to parse test plan: $error');
     return null;
   }
 }

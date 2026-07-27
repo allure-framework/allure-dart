@@ -1,11 +1,11 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:crypto/crypto.dart';
 import 'package:mime/mime.dart';
 import 'package:path/path.dart' as p;
 
 import 'model.dart';
+import 'platform.dart';
 
 /// Label name used to mark tests excluded by an Allure test plan.
 const String allureTestPlanSkipLabel = 'ALLURE_TESTPLAN_SKIP';
@@ -202,7 +202,7 @@ const Set<String> singletonAutomaticLabelNames = <String>{
 
 /// Converts `ALLURE_LABEL_*` environment variables to Allure labels.
 List<AllureLabel> getEnvironmentLabels([Map<String, String>? environment]) {
-  final source = environment ?? Platform.environment;
+  final source = environment ?? allureEnvironment;
   final labels = <AllureLabel>[];
   for (final entry in source.entries) {
     if (!entry.key.startsWith('ALLURE_LABEL_')) {
@@ -247,12 +247,12 @@ List<AllureLabel> collapseSingletonLabels(Iterable<AllureLabel> labels) {
 /// When `ALLURE_LABEL_host` is set, that value is used so adapters that call
 /// this helper do not invent a conflicting automatic hostname.
 AllureLabel getHostLabel([Map<String, String>? environment]) {
-  final source = environment ?? Platform.environment;
+  final source = environment ?? allureEnvironment;
   final override = source['ALLURE_LABEL_host'];
   if (override != null && override.isNotEmpty) {
     return AllureLabel(name: 'host', value: override);
   }
-  return AllureLabel(name: 'host', value: Platform.localHostname);
+  return AllureLabel(name: 'host', value: allureLocalHostname);
 }
 
 /// Returns a thread label using [threadId] or the current process id.
@@ -266,12 +266,12 @@ AllureLabel getThreadLabel([
   if (threadId != null) {
     return AllureLabel(name: 'thread', value: threadId);
   }
-  final source = environment ?? Platform.environment;
+  final source = environment ?? allureEnvironment;
   final override = source['ALLURE_LABEL_thread'];
   if (override != null && override.isNotEmpty) {
     return AllureLabel(name: 'thread', value: override);
   }
-  return AllureLabel(name: 'thread', value: 'pid-$pid');
+  return AllureLabel(name: 'thread', value: allureProcessThreadId);
 }
 
 /// Returns a package label with [filepath] relative to the current directory.
@@ -288,7 +288,7 @@ AllureLabel getFrameworkLabel(String framework) =>
 
 /// Returns [filepath] relative to the current directory using POSIX separators.
 String getRelativePath(String filepath) {
-  final current = Directory.current.path;
+  final current = allureCurrentDirectory;
   final relative = p.relative(filepath, from: current);
   return getPosixPath(relative);
 }

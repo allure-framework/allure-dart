@@ -4,7 +4,8 @@ import 'package:allure_dart_test/allure_dart_test.dart'
 import 'package:flutter/widgets.dart';
 import 'package:integration_test/integration_test.dart';
 
-import 'flutter_golden_hook.dart';
+import 'flutter_golden_hook_stub.dart'
+    if (dart.library.io) 'flutter_golden_hook.dart';
 import 'flutter_screenshot_hook.dart';
 
 bool _screenshotOnFailureEnabled = false;
