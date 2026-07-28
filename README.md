@@ -4,11 +4,18 @@
 
 [<img src="https://allurereport.org/public/img/allure-report.svg" height="85px" alt="Allure Report logo" align="right" />](https://allurereport.org "Allure Report")
 
+[![Build](https://github.com/allure-framework/allure-dart/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/allure-framework/allure-dart/actions/workflows/tests.yml)
+[![allure_dart_test](https://img.shields.io/pub/v/allure_dart_test.svg)](https://pub.dev/packages/allure_dart_test)
+[![allure_flutter_test](https://img.shields.io/pub/v/allure_flutter_test.svg)](https://pub.dev/packages/allure_flutter_test)
+[![allure_dart_commons](https://img.shields.io/pub/v/allure_dart_commons.svg)](https://pub.dev/packages/allure_dart_commons)
+[![License](https://img.shields.io/github/license/allure-framework/allure-dart)](LICENSE)
+
 - Learn more about Allure Report at https://allurereport.org
 - 📚 [Documentation](https://allurereport.org/docs/) – discover official documentation for Allure Report
 - ❓ [Questions and Support](https://github.com/orgs/allure-framework/discussions/categories/questions-support) – get help from the team and community
 - 📢 [Official announcements](https://github.com/orgs/allure-framework/discussions/categories/announcements) – be in touch with the latest updates
 - 💬 [General Discussion](https://github.com/orgs/allure-framework/discussions/categories/general-discussion) – engage in casual conversations, share insights and ideas with the community
+- 🤝 [Contributing](CONTRIBUTING.md) · [Code of Conduct](CODE_OF_CONDUCT.md) · [Security](SECURITY.md) · [Support](SUPPORT.md)
 
 ---
 
@@ -21,6 +28,23 @@ Use it when you want rich test reports with statuses, steps, fixtures,
 attachments, labels, links, parameters, environment information, and test plan
 selection.
 
+This repository is the official Dart/Flutter member of the Allure Framework
+adapter family, alongside integrations such as
+[allure-js](https://github.com/allure-framework/allure-js),
+[allure-python](https://github.com/allure-framework/allure-python), and
+[allure-java](https://github.com/allure-framework/allure-java). All adapters
+produce the same `allure-results` format consumed by Allure Report.
+
+<p align="center">
+  <img src="docs/assets/allure-report-overview-light.gif#gh-light-mode-only" alt="Allure Report overview for Allure Dart packages (light)" width="900" />
+  <img src="docs/assets/allure-report-overview-dark.gif#gh-dark-mode-only" alt="Allure Report overview for Allure Dart packages (dark)" width="900" />
+</p>
+
+<p align="center">
+  <img src="docs/assets/allure-report-test-details-light.gif#gh-light-mode-only" alt="Allure Report test details with steps and attachments (light)" width="900" />
+  <img src="docs/assets/allure-report-test-details-dark.gif#gh-dark-mode-only" alt="Allure Report test details with steps and attachments (dark)" width="900" />
+</p>
+
 ## Packages
 
 | Package | Use it for |
@@ -31,10 +55,10 @@ selection.
 
 ## Requirements
 
-- Dart SDK 3.6 or newer.
+- Dart SDK 3.8 or newer.
 - Flutter 3.24 or newer when using `allure_flutter_test`.
-- The Allure command-line tool when you want to turn `allure-results` into an
-  HTML report.
+- Node.js 20+ and the Allure CLI (`npx -y allure@3`) when you want to turn
+  `allure-results` into an HTML report.
 
 ## Dart Tests
 
@@ -315,3 +339,9 @@ await lifecycle.addAttachmentStreamToRoot(
   content: logFile.openRead(),
 );
 ```
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, quality checks, CLA, and
+required `pr:` labels. Please also read the
+[Code of Conduct](CODE_OF_CONDUCT.md) and [Security Policy](SECURITY.md).

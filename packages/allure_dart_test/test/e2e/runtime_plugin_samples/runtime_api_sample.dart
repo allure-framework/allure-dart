@@ -6,11 +6,7 @@ void main() {
 
   test('runtime api sample @allure.label.owner:alice', () async {
     await parameter('browser', 'chromium');
-    await link(
-      'https://example.test/BUG-1',
-      name: 'bug',
-      type: 'issue',
-    );
+    await link('https://example.test/BUG-1', name: 'bug', type: 'issue');
 
     await step('outer step', (context) async {
       await context.parameter('attempt', 1);

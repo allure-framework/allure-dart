@@ -75,17 +75,13 @@ void group(
     stackTrace: StackTrace.current,
     ignoredLibrarySuffixes: _ignoredLibrarySuffixes,
   );
-  ft.group(
-    description ?? '',
-    () {
-      try {
-        body();
-      } finally {
-        PackageTestScopeRegistry.instance.popGroup();
-      }
-    },
-    retry: retry,
-  );
+  ft.group(description ?? '', () {
+    try {
+      body();
+    } finally {
+      PackageTestScopeRegistry.instance.popGroup();
+    }
+  }, retry: retry);
 }
 
 /// Registers a setup callback as an Allure fixture.
@@ -104,7 +100,8 @@ void tearDown(FutureOr<dynamic> Function() callback) {
 void setUpAll(FutureOr<dynamic> Function() callback) {
   final plugin = _ensureAllureInstalled();
   final groupPath = PackageTestScopeRegistry.instance.currentPath;
-  final packagePath = PackageTestScopeRegistry.instance.currentPackagePath ??
+  final packagePath =
+      PackageTestScopeRegistry.instance.currentPackagePath ??
       resolvePackageTestPathFromDeclaration(
         stackTrace: StackTrace.current,
         ignoredLibrarySuffixes: _ignoredLibrarySuffixes,
@@ -122,7 +119,8 @@ void setUpAll(FutureOr<dynamic> Function() callback) {
 void tearDownAll(FutureOr<dynamic> Function() callback) {
   final plugin = _ensureAllureInstalled();
   final groupPath = PackageTestScopeRegistry.instance.currentPath;
-  final packagePath = PackageTestScopeRegistry.instance.currentPackagePath ??
+  final packagePath =
+      PackageTestScopeRegistry.instance.currentPackagePath ??
       resolvePackageTestPathFromDeclaration(
         stackTrace: StackTrace.current,
         ignoredLibrarySuffixes: _ignoredLibrarySuffixes,
@@ -201,8 +199,8 @@ class _SingleValueVariant<T extends Object?> extends ft.TestVariant<T> {
   const _SingleValueVariant({
     required ft.TestVariant<T> delegate,
     required T value,
-  })  : _delegate = delegate,
-        _value = value;
+  }) : _delegate = delegate,
+       _value = value;
 
   final ft.TestVariant<T> _delegate;
   final T _value;

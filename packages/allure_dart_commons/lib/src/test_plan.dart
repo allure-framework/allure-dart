@@ -44,8 +44,9 @@ TestPlanV1? parseTestPlan([Map<String, String>? environment]) {
   final path = source['ALLURE_TESTPLAN_PATH'];
 
   if (usesProcessEnvironment) {
-    final cacheKey =
-        (path == null || path.isEmpty) ? _noTestPlanPathSentinel : path;
+    final cacheKey = (path == null || path.isEmpty)
+        ? _noTestPlanPathSentinel
+        : path;
     if (_testPlanCache.containsKey(cacheKey)) {
       return _testPlanCache[cacheKey];
     }
@@ -89,7 +90,8 @@ TestPlanV1? _parseTestPlanFromPath(String? path) {
         .whereType<Map>()
         .where((entry) {
           final hasId = entry['id'] != null;
-          final hasSelector = entry['selector'] != null &&
+          final hasSelector =
+              entry['selector'] != null &&
               entry['selector'].toString().isNotEmpty;
           if (!hasId && !hasSelector) {
             allureLogWarning('Allure: ignoring malformed test plan entry');
@@ -126,13 +128,16 @@ bool includedInTestPlan(
   final effectiveId = id ?? _extractAllureIdFromTags(tags);
 
   for (final entry in plan.tests) {
-    final idMatched = effectiveId != null &&
+    final idMatched =
+        effectiveId != null &&
         entry.id != null &&
         entry.id.toString() == effectiveId;
-    final selectorMatched = fullName != null &&
+    final selectorMatched =
+        fullName != null &&
         entry.selector != null &&
         entry.selector == fullName;
-    final nativeSelectorMatched = nativeSelector != null &&
+    final nativeSelectorMatched =
+        nativeSelector != null &&
         entry.selector != null &&
         entry.selector == nativeSelector;
     if (idMatched || selectorMatched || nativeSelectorMatched) {

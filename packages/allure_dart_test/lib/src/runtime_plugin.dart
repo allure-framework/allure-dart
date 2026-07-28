@@ -17,10 +17,10 @@ class AllureTestRuntimePlugin {
   AllureTestRuntimePlugin({
     AllureLifecycle? lifecycle,
     FrameworkLabelResolver? frameworkLabelResolver,
-  })  : _lifecycle = lifecycle ?? AllureLifecycle(),
-        _frameworkLabelResolver =
-            frameworkLabelResolver ?? _defaultFrameworkLabelResolver,
-        _testPlan = parseTestPlan();
+  }) : _lifecycle = lifecycle ?? AllureLifecycle(),
+       _frameworkLabelResolver =
+           frameworkLabelResolver ?? _defaultFrameworkLabelResolver,
+       _testPlan = parseTestPlan();
 
   static AllureTestRuntimePlugin? _installedPlugin;
 
@@ -65,7 +65,8 @@ class AllureTestRuntimePlugin {
   }) {
     final hasDifferentLifecycle =
         lifecycle != null && !identical(lifecycle, _lifecycle);
-    final hasDifferentResolver = frameworkLabelResolver != null &&
+    final hasDifferentResolver =
+        frameworkLabelResolver != null &&
         !identical(frameworkLabelResolver, _frameworkLabelResolver);
     if (hasDifferentLifecycle || hasDifferentResolver) {
       throw StateError(
@@ -134,10 +135,7 @@ class AllureTestRuntimePlugin {
     if (uuid == null || uuid.isEmpty) {
       return null;
     }
-    return AllureExecutionContext(
-      rootUuid: uuid,
-      testUuid: uuid,
-    );
+    return AllureExecutionContext(rootUuid: uuid, testUuid: uuid);
   }
 
   /// Wraps a `setUp` callback so it is recorded as an Allure fixture.
@@ -153,7 +151,9 @@ class AllureTestRuntimePlugin {
       final scopeId = 'test:${context.testUuid}';
       _lifecycle.ensureScope(id: scopeId, expectedChildrenCount: 1);
       _lifecycle.lifecycleLinkTest(
-          scopeId: scopeId, testUuid: context.testUuid);
+        scopeId: scopeId,
+        testUuid: context.testUuid,
+      );
 
       final fixtureUuid = _lifecycle.startFixture(
         scopeId: scopeId,
@@ -167,10 +167,7 @@ class AllureTestRuntimePlugin {
           testUuid: context.testUuid,
           body: () async => await callback(),
         );
-        await _lifecycle.stopFixture(
-          fixtureUuid,
-          status: AllureStatus.passed,
-        );
+        await _lifecycle.stopFixture(fixtureUuid, status: AllureStatus.passed);
       } catch (error, stackTrace) {
         await _lifecycle.stopFixture(
           fixtureUuid,
@@ -196,7 +193,9 @@ class AllureTestRuntimePlugin {
       final scopeId = 'test:${context.testUuid}';
       _lifecycle.ensureScope(id: scopeId, expectedChildrenCount: 1);
       _lifecycle.lifecycleLinkTest(
-          scopeId: scopeId, testUuid: context.testUuid);
+        scopeId: scopeId,
+        testUuid: context.testUuid,
+      );
 
       final fixtureUuid = _lifecycle.startFixture(
         scopeId: scopeId,
@@ -210,10 +209,7 @@ class AllureTestRuntimePlugin {
           testUuid: context.testUuid,
           body: () async => await callback(),
         );
-        await _lifecycle.stopFixture(
-          fixtureUuid,
-          status: AllureStatus.passed,
-        );
+        await _lifecycle.stopFixture(fixtureUuid, status: AllureStatus.passed);
       } catch (error, stackTrace) {
         await _lifecycle.stopFixture(
           fixtureUuid,
@@ -253,10 +249,7 @@ class AllureTestRuntimePlugin {
           testUuid: fixtureUuid,
           body: () async => await callback(),
         );
-        await _lifecycle.stopFixture(
-          fixtureUuid,
-          status: AllureStatus.passed,
-        );
+        await _lifecycle.stopFixture(fixtureUuid, status: AllureStatus.passed);
       } catch (error, stackTrace) {
         await _lifecycle.stopFixture(
           fixtureUuid,
@@ -296,10 +289,7 @@ class AllureTestRuntimePlugin {
           testUuid: fixtureUuid,
           body: () async => await callback(),
         );
-        await _lifecycle.stopFixture(
-          fixtureUuid,
-          status: AllureStatus.passed,
-        );
+        await _lifecycle.stopFixture(fixtureUuid, status: AllureStatus.passed);
       } catch (error, stackTrace) {
         await _lifecycle.stopFixture(
           fixtureUuid,
@@ -333,10 +323,7 @@ class AllureTestRuntimePlugin {
     if (rootExpectedChildren != null) {
       groupScopeIds.add(
         _lifecycle.ensureScope(
-          id: buildPackageTestScopeId(
-            metadata.packagePath,
-            const <String>[],
-          ),
+          id: buildPackageTestScopeId(metadata.packagePath, const <String>[]),
           expectedChildrenCount: rootExpectedChildren,
         ),
       );
@@ -376,13 +363,11 @@ class AllureTestRuntimePlugin {
       getHostLabel(),
       getThreadLabel(),
       AllureLabel(name: 'testMethod', value: metadata.name),
-      AllureLabel(
-        name: 'testClass',
-        value: metadata.testClass,
-      ),
+      AllureLabel(name: 'testClass', value: metadata.testClass),
     ];
 
-    final excludedByTestPlan = _testPlan != null &&
+    final excludedByTestPlan =
+        _testPlan != null &&
         !includedInTestPlan(
           _testPlan,
           id: metadata.externalId,
@@ -548,8 +533,9 @@ class AllureTestRuntimePlugin {
     }
     return _FailureDetails(
       error: StateError('Expected 0 failures, but got ${errors.length}'),
-      stackTrace:
-          traces.isEmpty ? null : StackTrace.fromString(traces.join('\n\n')),
+      stackTrace: traces.isEmpty
+          ? null
+          : StackTrace.fromString(traces.join('\n\n')),
     );
   }
 
@@ -586,11 +572,7 @@ void installAllure({AllureLifecycle? lifecycle}) {
 String _defaultFrameworkLabelResolver() => 'dart-test';
 
 class _ResolvedTest {
-  _ResolvedTest({
-    required this.liveTest,
-    required this.test,
-    this.uuid,
-  });
+  _ResolvedTest({required this.liveTest, required this.test, this.uuid});
 
   final dynamic liveTest;
   final Object test;
@@ -598,10 +580,7 @@ class _ResolvedTest {
 }
 
 class _FailureDetails {
-  const _FailureDetails({
-    required this.error,
-    required this.stackTrace,
-  });
+  const _FailureDetails({required this.error, required this.stackTrace});
 
   final Object error;
   final StackTrace? stackTrace;

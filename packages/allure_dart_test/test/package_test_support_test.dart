@@ -36,8 +36,9 @@ The fullName and native selector should keep the joined package path for stable 
         );
       });
 
-      await allure.step('Verify titlePath keeps hierarchical segments',
-          (step) async {
+      await allure.step('Verify titlePath keeps hierarchical segments', (
+        step,
+      ) async {
         await step.parameter('titlePath', metadata.titlePath);
         expect(metadata.titlePath, <String>[
           'test',
@@ -47,8 +48,9 @@ The fullName and native selector should keep the joined package path for stable 
           'happy path',
         ]);
       });
-      await allure.step('Verify fullName keeps the joined package path',
-          (step) async {
+      await allure.step('Verify fullName keeps the joined package path', (
+        step,
+      ) async {
         await step.parameter('fullName', metadata.fullName);
         expect(
           metadata.fullName,
@@ -58,50 +60,55 @@ The fullName and native selector should keep the joined package path for stable 
       });
     });
 
-    test('normalizes package path separators before building metadata',
-        () async {
-      await allure.description('''
+    test(
+      'normalizes package path separators before building metadata',
+      () async {
+        await allure.description('''
 Verifies that package paths are normalized to POSIX separators before they are used for titlePath, fullName, and native selectors.
 ''');
 
-      late PackageTestMetadata metadata;
-      await allure.step('Build metadata from a Windows-style package path',
-          (_) async {
-        metadata = buildPackageTestMetadata(
-          rawName: 'logs in',
-          packagePath: r'test\features\login_test.dart',
-          groupPath: const <String>['auth'],
-        );
-        await allure.attachment(
-          'normalized metadata fields',
-          const JsonEncoder.withIndent('  ').convert(<String, Object?>{
-            'packagePath': metadata.packagePath,
-            'titlePath': metadata.titlePath,
-            'fullName': metadata.fullName,
-            'nativeSelector': metadata.nativeSelector,
-          }),
-          contentType: 'application/json',
-          fileExtension: 'json',
-        );
-      });
+        late PackageTestMetadata metadata;
+        await allure.step('Build metadata from a Windows-style package path', (
+          _,
+        ) async {
+          metadata = buildPackageTestMetadata(
+            rawName: 'logs in',
+            packagePath: r'test\features\login_test.dart',
+            groupPath: const <String>['auth'],
+          );
+          await allure.attachment(
+            'normalized metadata fields',
+            const JsonEncoder.withIndent('  ').convert(<String, Object?>{
+              'packagePath': metadata.packagePath,
+              'titlePath': metadata.titlePath,
+              'fullName': metadata.fullName,
+              'nativeSelector': metadata.nativeSelector,
+            }),
+            contentType: 'application/json',
+            fileExtension: 'json',
+          );
+        });
 
-      await allure.step('Verify every path-shaped field uses POSIX separators',
+        await allure.step(
+          'Verify every path-shaped field uses POSIX separators',
           (step) async {
-        await step.parameter('packagePath', metadata.packagePath);
-        expect(metadata.packagePath, 'test/features/login_test.dart');
-        expect(metadata.titlePath, <String>[
-          'test',
-          'features',
-          'login_test.dart',
-          'auth',
-        ]);
-        expect(
-          metadata.fullName,
-          'test/features/login_test.dart#auth#logs in',
+            await step.parameter('packagePath', metadata.packagePath);
+            expect(metadata.packagePath, 'test/features/login_test.dart');
+            expect(metadata.titlePath, <String>[
+              'test',
+              'features',
+              'login_test.dart',
+              'auth',
+            ]);
+            expect(
+              metadata.fullName,
+              'test/features/login_test.dart#auth#logs in',
+            );
+            expect(metadata.nativeSelector, metadata.fullName);
+          },
         );
-        expect(metadata.nativeSelector, metadata.fullName);
-      });
-    });
+      },
+    );
 
     test('resolves package paths from package root', () async {
       await allure.description('''
@@ -114,8 +121,9 @@ The fixture package lives outside the current package directory, so a cwd-relati
       addTearDown(fixture.dispose);
 
       late Map<String, String?> resolved;
-      await allure.step('Resolve paths for an external package fixture',
-          (_) async {
+      await allure.step('Resolve paths for an external package fixture', (
+        _,
+      ) async {
         resolved = <String, String?>{
           'currentDirectory': Directory.current.path,
           'fromUri': packageTestPathFromUri(fixture.testFile.uri),
@@ -175,9 +183,9 @@ ${testFile.uri} 3:3
 
   static _PackagePathFixture create() {
     final root = Directory.systemTemp.createTempSync('allure_dart_path_');
-    final packageRoot =
-        Directory(p.join(root.path, 'workspace', 'packages', 'sample_app'))
-          ..createSync(recursive: true);
+    final packageRoot = Directory(
+      p.join(root.path, 'workspace', 'packages', 'sample_app'),
+    )..createSync(recursive: true);
     File(p.join(packageRoot.path, 'pubspec.yaml'))
       ..createSync(recursive: true)
       ..writeAsStringSync('name: sample_app\n');

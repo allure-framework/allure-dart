@@ -7,8 +7,6 @@ void main() {
       expect(1 + 1, equals(2));
     },
     testOn: 'vm',
-    onPlatform: const <String, dynamic>{
-      'browser': Timeout.factor(2),
-    },
+    onPlatform: const <String, dynamic>{'browser': Timeout.factor(2)},
   );
 }

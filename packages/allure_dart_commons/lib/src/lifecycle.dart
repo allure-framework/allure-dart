@@ -100,15 +100,15 @@ class AllureLifecycle implements AllureRuntimeMessageSink {
     List<AllureCategory>? categories,
     AllureExecutorInfo? executorInfo,
     List<AllureLifecycleListener>? listeners,
-  })  : _writer = writer,
-        _uuid = uuid ?? const Uuid(),
-        _linkUrlTemplates = linkUrlTemplates ?? const <String, String>{},
-        _linkNameTemplates = linkNameTemplates ?? const <String, String>{},
-        _globalLabels = globalLabels ?? const <AllureLabel>[],
-        _environmentInfo = environmentInfo ?? const <String, String?>{},
-        _categories = categories ?? const <AllureCategory>[],
-        _executorInfo = executorInfo,
-        _listeners = listeners ?? const <AllureLifecycleListener>[];
+  }) : _writer = writer,
+       _uuid = uuid ?? const Uuid(),
+       _linkUrlTemplates = linkUrlTemplates ?? const <String, String>{},
+       _linkNameTemplates = linkNameTemplates ?? const <String, String>{},
+       _globalLabels = globalLabels ?? const <AllureLabel>[],
+       _environmentInfo = environmentInfo ?? const <String, String?>{},
+       _categories = categories ?? const <AllureCategory>[],
+       _executorInfo = executorInfo,
+       _listeners = listeners ?? const <AllureLifecycleListener>[];
 
   final AllureResultsWriter _writer;
   final Uuid _uuid;
@@ -149,22 +149,13 @@ class AllureLifecycle implements AllureRuntimeMessageSink {
 
   /// Sets the expected number of child tests for a scope.
   void setScopeExpectedChildren(String scopeId, int expectedChildrenCount) {
-    final scope = _scopes.putIfAbsent(
-      scopeId,
-      () => _ScopeState(id: scopeId),
-    );
+    final scope = _scopes.putIfAbsent(scopeId, () => _ScopeState(id: scopeId));
     scope.expectedChildrenCount = expectedChildrenCount;
   }
 
   /// Links an existing test result to a lifecycle scope.
-  void lifecycleLinkTest({
-    required String scopeId,
-    required String testUuid,
-  }) {
-    final scope = _scopes.putIfAbsent(
-      scopeId,
-      () => _ScopeState(id: scopeId),
-    );
+  void lifecycleLinkTest({required String scopeId, required String testUuid}) {
+    final scope = _scopes.putIfAbsent(scopeId, () => _ScopeState(id: scopeId));
     if (!scope.children.contains(testUuid)) {
       scope.children.add(testUuid);
     }
@@ -249,7 +240,9 @@ class AllureLifecycle implements AllureRuntimeMessageSink {
 
   /// Applies an in-place update to a started test result.
   void updateTest(
-      String testUuid, void Function(AllureTestResult result) update) {
+    String testUuid,
+    void Function(AllureTestResult result) update,
+  ) {
     final state = _tests[testUuid];
     if (state == null) {
       throw StateError('Unknown test uuid: $testUuid');
@@ -274,12 +267,14 @@ class AllureLifecycle implements AllureRuntimeMessageSink {
 
     final result = state.result;
     _notify('beforeTestStop', (listener) => listener.beforeTestStop(result));
-    final resolvedStatus = status ??
+    final resolvedStatus =
+        status ??
         result.status ??
         (error == null
             ? AllureStatus.passed
             : getStatusFromError(error, stackTrace));
-    final resolvedDetails = statusDetails ??
+    final resolvedDetails =
+        statusDetails ??
         (error == null
             ? result.statusDetails
             : getMessageAndTraceFromError(error, stackTrace));
@@ -305,15 +300,19 @@ class AllureLifecycle implements AllureRuntimeMessageSink {
     result.labels
       ..clear()
       ..addAll(dedupedLabels);
-    final formattedLinks =
-        formatLinks(_linkUrlTemplates, _linkNameTemplates, result.links);
+    final formattedLinks = formatLinks(
+      _linkUrlTemplates,
+      _linkNameTemplates,
+      result.links,
+    );
     result.links
       ..clear()
       ..addAll(formattedLinks);
 
     result.testCaseName ??= result.name;
-    result.testCaseId ??=
-        result.fullName == null ? null : md5Hash(result.fullName!);
+    result.testCaseId ??= result.fullName == null
+        ? null
+        : md5Hash(result.fullName!);
     result.historyId ??= _deriveHistoryId(result);
 
     final normalized = normalizeTiming(
@@ -385,10 +384,7 @@ class AllureLifecycle implements AllureRuntimeMessageSink {
     required String name,
     int? start,
   }) {
-    final scope = _scopes.putIfAbsent(
-      scopeId,
-      () => _ScopeState(id: scopeId),
-    );
+    final scope = _scopes.putIfAbsent(scopeId, () => _ScopeState(id: scopeId));
     final uuid = _uuid.v4();
     final result = AllureFixtureResult(
       name: name,
@@ -421,12 +417,14 @@ class AllureLifecycle implements AllureRuntimeMessageSink {
       throw StateError('Unknown fixture uuid: $fixtureUuid');
     }
 
-    final resolvedStatus = status ??
+    final resolvedStatus =
+        status ??
         fixture.result.status ??
         (error == null
             ? AllureStatus.passed
             : getStatusFromError(error, stackTrace));
-    final resolvedDetails = statusDetails ??
+    final resolvedDetails =
+        statusDetails ??
         (error == null
             ? fixture.result.statusDetails
             : getMessageAndTraceFromError(error, stackTrace));
@@ -457,8 +455,9 @@ class AllureLifecycle implements AllureRuntimeMessageSink {
       fixture.scopeId,
       () => _ScopeState(id: fixture.scopeId),
     );
-    scope.fixtures
-        .add(_RecordedFixture(before: fixture.before, result: fixture.result));
+    scope.fixtures.add(
+      _RecordedFixture(before: fixture.before, result: fixture.result),
+    );
     await flushScopeIfComplete(fixture.scopeId);
   }
 
@@ -514,11 +513,7 @@ class AllureLifecycle implements AllureRuntimeMessageSink {
   }
 
   /// Starts a step under a test, fixture, or active parent step.
-  void startStep(
-    String rootUuid,
-    String name, {
-    int? start,
-  }) {
+  void startStep(String rootUuid, String name, {int? start}) {
     final stack = _stepStacks[rootUuid];
     if (stack == null) {
       throw StateError('Unknown root uuid: $rootUuid');
@@ -580,8 +575,9 @@ class AllureLifecycle implements AllureRuntimeMessageSink {
     step
       ..status ??= status ?? AllureStatus.passed
       ..statusDetails = statusDetails == null || !step.statusDetails.isEmpty
-          ? step.statusDetails
-              .merge(statusDetails ?? const AllureStatusDetails())
+          ? step.statusDetails.merge(
+              statusDetails ?? const AllureStatusDetails(),
+            )
           : statusDetails
       ..stage = AllureStage.finished
       ..start = normalized.start
@@ -786,9 +782,7 @@ class AllureLifecycle implements AllureRuntimeMessageSink {
       (listener) => listener.onGlobalAttachment(globalAttachment),
     );
     await _writer.writeGlobals(
-      AllureGlobals(
-        attachments: <AllureGlobalAttachment>[globalAttachment],
-      ),
+      AllureGlobals(attachments: <AllureGlobalAttachment>[globalAttachment]),
     );
   }
 
@@ -818,9 +812,7 @@ class AllureLifecycle implements AllureRuntimeMessageSink {
       (listener) => listener.onGlobalAttachment(globalAttachment),
     );
     await _writer.writeGlobals(
-      AllureGlobals(
-        attachments: <AllureGlobalAttachment>[globalAttachment],
-      ),
+      AllureGlobals(attachments: <AllureGlobalAttachment>[globalAttachment]),
     );
   }
 
@@ -839,9 +831,7 @@ class AllureLifecycle implements AllureRuntimeMessageSink {
     );
     _notify('onGlobalError', (listener) => listener.onGlobalError(error));
     await _writer.writeGlobals(
-      AllureGlobals(
-        errors: <AllureGlobalError>[error],
-      ),
+      AllureGlobals(errors: <AllureGlobalError>[error]),
     );
   }
 
@@ -919,21 +909,23 @@ class AllureLifecycle implements AllureRuntimeMessageSink {
   }
 
   String? _deriveHistoryId(AllureTestResult result) {
-    final baseId = result.testCaseId ??
+    final baseId =
+        result.testCaseId ??
         (result.fullName == null ? null : md5Hash(result.fullName!));
     if (baseId == null) {
       return null;
     }
-    final params = result.parameters
-        .where((parameter) => parameter.excluded != true)
-        .toList()
-      ..sort((left, right) {
-        final nameResult = left.name.compareTo(right.name);
-        if (nameResult != 0) {
-          return nameResult;
-        }
-        return left.value.compareTo(right.value);
-      });
+    final params =
+        result.parameters
+            .where((parameter) => parameter.excluded != true)
+            .toList()
+          ..sort((left, right) {
+            final nameResult = left.name.compareTo(right.name);
+            if (nameResult != 0) {
+              return nameResult;
+            }
+            return left.value.compareTo(right.value);
+          });
     final serialized = params
         .map((parameter) => '${parameter.name}:${parameter.value}')
         .join(',');
@@ -972,11 +964,7 @@ class AllureLifecycle implements AllureRuntimeMessageSink {
       return;
     }
     while (stack.isNotEmpty) {
-      stopStep(
-        rootUuid,
-        status: status,
-        statusDetails: statusDetails,
-      );
+      stopStep(rootUuid, status: status, statusDetails: statusDetails);
     }
   }
 
@@ -1106,8 +1094,9 @@ class AllureLifecycle implements AllureRuntimeMessageSink {
           descriptionHtml ?? fixture.result.descriptionHtml;
       fixture.result.parameters.addAll(parameters);
       if (!statusDetails.isEmpty) {
-        fixture.result.statusDetails =
-            fixture.result.statusDetails.merge(statusDetails);
+        fixture.result.statusDetails = fixture.result.statusDetails.merge(
+          statusDetails,
+        );
       }
       if (fixture.before) {
         final scope = _scopes.putIfAbsent(
@@ -1275,10 +1264,7 @@ class _TestState {
 }
 
 class _ScopeState {
-  _ScopeState({
-    required this.id,
-    this.name,
-  }) : start = currentTimestamp();
+  _ScopeState({required this.id, this.name}) : start = currentTimestamp();
 
   final String id;
   String? name;
@@ -1309,10 +1295,7 @@ class _FixtureState {
 }
 
 class _RecordedFixture {
-  _RecordedFixture({
-    required this.before,
-    required this.result,
-  });
+  _RecordedFixture({required this.before, required this.result});
 
   final bool before;
   final AllureFixtureResult result;

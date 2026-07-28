@@ -14,15 +14,11 @@
 import 'package:allure_flutter_test/flutter_test.dart';
 
 void main() {
-  group(
-    'drop in skipped widget group',
-    () {
-      setUp(() {});
+  group('drop in skipped widget group', () {
+    setUp(() {});
 
-      testWidgets('nested testWidgets in skipped group', (tester) async {
-        fail('no');
-      });
-    },
-    skip: true,
-  );
+    testWidgets('nested testWidgets in skipped group', (tester) async {
+      fail('no');
+    });
+  }, skip: true);
 }

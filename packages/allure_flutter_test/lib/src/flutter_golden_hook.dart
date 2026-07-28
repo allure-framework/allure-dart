@@ -33,8 +33,9 @@ void _ensureGoldenComparatorWrapped() {
   if (ft.goldenFileComparator is _AllureGoldenFileComparator) {
     return;
   }
-  ft.goldenFileComparator =
-      _AllureGoldenFileComparator(ft.goldenFileComparator);
+  ft.goldenFileComparator = _AllureGoldenFileComparator(
+    ft.goldenFileComparator,
+  );
 }
 
 /// A [ft.GoldenFileComparator] that delegates to another comparator and

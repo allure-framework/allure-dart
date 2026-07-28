@@ -1,5 +1,7 @@
 # allure_dart_commons
 
+[![pub package](https://img.shields.io/pub/v/allure_dart_commons.svg)](https://pub.dev/packages/allure_dart_commons)
+
 `allure_dart_commons` contains the framework-agnostic Allure model, lifecycle,
 runtime message, and writer primitives shared by the Dart test adapters in this
 workspace.

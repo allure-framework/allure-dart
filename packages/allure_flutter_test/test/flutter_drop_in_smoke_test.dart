@@ -17,8 +17,9 @@ void main() {
     expect(resultFiles, isNotEmpty);
 
     final results = resultFiles
-        .map((file) =>
-            jsonDecode(file.readAsStringSync()) as Map<String, dynamic>)
+        .map(
+          (file) => jsonDecode(file.readAsStringSync()) as Map<String, dynamic>,
+        )
         .toList();
     final smokeResults = results.where((result) {
       final name = result['name'] as String;
@@ -69,15 +70,18 @@ void main() {
           predicate<Map<dynamic, dynamic>>(
             (parameter) =>
                 parameter['name'] == 'variant' &&
-                <String>{'compact', 'expanded'}
-                    .contains(parameter['value'] as String?),
+                <String>{
+                  'compact',
+                  'expanded',
+                }.contains(parameter['value'] as String?),
           ),
         ),
       );
     }
 
-    final skippedResults =
-        results.where((result) => result['name'] == 'is skipped explicitly');
+    final skippedResults = results.where(
+      (result) => result['name'] == 'is skipped explicitly',
+    );
     expect(skippedResults, hasLength(1));
     final skippedResult = skippedResults.single;
     expect(skippedResult['status'], 'skipped');
@@ -96,13 +100,17 @@ void main() {
         .toList();
     expect(containerFiles, isNotEmpty);
     final containers = containerFiles
-        .map((file) =>
-            jsonDecode(file.readAsStringSync()) as Map<String, dynamic>)
+        .map(
+          (file) => jsonDecode(file.readAsStringSync()) as Map<String, dynamic>,
+        )
         .toList();
 
     final fixtureContainers = containers
-        .where((container) =>
-            (container['children'] as List<dynamic>).contains(fixtureTestUuid))
+        .where(
+          (container) => (container['children'] as List<dynamic>).contains(
+            fixtureTestUuid,
+          ),
+        )
         .toList();
     expect(
       fixtureContainers,
@@ -141,22 +149,20 @@ void main() {
 
     testWidgets('records widget expectations', (tester) async {
       await step('render widget and verify text', (_) async {
-        await tester.pumpWidget(const Directionality(
-          textDirection: TextDirection.ltr,
-          child: Text('hello'),
-        ));
+        await tester.pumpWidget(
+          const Directionality(
+            textDirection: TextDirection.ltr,
+            child: Text('hello'),
+          ),
+        );
 
         expect(find.text('hello'), findsOneWidget);
       });
     });
 
-    test(
-      'is skipped explicitly',
-      () {
-        fail('declaration-skipped test body must not run');
-      },
-      skip: true,
-    );
+    test('is skipped explicitly', () {
+      fail('declaration-skipped test body must not run');
+    }, skip: true);
   });
 
   group('fixture smoke', () {

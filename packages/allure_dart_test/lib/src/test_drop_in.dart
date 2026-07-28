@@ -112,7 +112,8 @@ void setUpAll(
 }) {
   final plugin = _ensureAllureInstalled();
   final groupPath = PackageTestScopeRegistry.instance.currentPath;
-  final packagePath = PackageTestScopeRegistry.instance.currentPackagePath ??
+  final packagePath =
+      PackageTestScopeRegistry.instance.currentPackagePath ??
       resolvePackageTestPathFromDeclaration(
         locationUri: location?.uri,
         stackTrace: StackTrace.current,
@@ -134,7 +135,8 @@ void tearDownAll(
 }) {
   final plugin = _ensureAllureInstalled();
   final groupPath = PackageTestScopeRegistry.instance.currentPath;
-  final packagePath = PackageTestScopeRegistry.instance.currentPackagePath ??
+  final packagePath =
+      PackageTestScopeRegistry.instance.currentPackagePath ??
       resolvePackageTestPathFromDeclaration(
         locationUri: location?.uri,
         stackTrace: StackTrace.current,

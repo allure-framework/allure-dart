@@ -13,9 +13,8 @@ class PackageTestScopeRegistry {
       <String, PackageTestMetadata>{};
 
   /// Current declaration-time group path.
-  List<String> get currentPath => List<String>.unmodifiable(
-        _declarationStack.map((group) => group.name),
-      );
+  List<String> get currentPath =>
+      List<String>.unmodifiable(_declarationStack.map((group) => group.name));
 
   /// Current package-relative test file path, when known.
   String? get currentPackagePath =>
@@ -40,10 +39,7 @@ class PackageTestScopeRegistry {
         skipped: resolvedSkipped,
       ),
     );
-    _scopeForPath(
-      currentPath,
-      packagePath: resolvedPackagePath,
-    );
+    _scopeForPath(currentPath, packagePath: resolvedPackagePath);
   }
 
   /// Pops the latest group from the declaration stack.
@@ -63,8 +59,10 @@ class PackageTestScopeRegistry {
     final path = <String>[];
     for (final group in _declarationStack) {
       path.add(group.name);
-      _scopeForPath(path, packagePath: resolvedPackagePath)
-          .expectedChildrenCount++;
+      _scopeForPath(
+        path,
+        packagePath: resolvedPackagePath,
+      ).expectedChildrenCount++;
     }
   }
 
@@ -79,10 +77,7 @@ class PackageTestScopeRegistry {
   }
 
   /// Returns the scope id for a group [path].
-  String scopeIdForPath(
-    List<String> path, {
-    required String? packagePath,
-  }) {
+  String scopeIdForPath(List<String> path, {required String? packagePath}) {
     return buildPackageTestScopeId(packagePath, path);
   }
 
@@ -120,10 +115,7 @@ class _DeclaredGroup {
 }
 
 class _DeclaredScope {
-  _DeclaredScope({
-    required this.id,
-    required this.name,
-  });
+  _DeclaredScope({required this.id, required this.name});
 
   final String id;
   final String? name;

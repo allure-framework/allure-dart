@@ -44,13 +44,13 @@ class AllureResultsWriter {
     String? outputDirectory,
     Uuid? uuid,
     AllureConfig? config,
-  })  : _outputDirectory = Directory(
-          outputDirectory ??
-              allureEnvironment['ALLURE_RESULTS_DIR'] ??
-              (config ?? AllureConfig.load()).resultsDirectory ??
-              'allure-results',
-        ),
-        _uuid = uuid ?? const Uuid();
+  }) : _outputDirectory = Directory(
+         outputDirectory ??
+             allureEnvironment['ALLURE_RESULTS_DIR'] ??
+             (config ?? AllureConfig.load()).resultsDirectory ??
+             'allure-results',
+       ),
+       _uuid = uuid ?? const Uuid();
 
   final Directory _outputDirectory;
   final Uuid _uuid;
@@ -70,8 +70,9 @@ class AllureResultsWriter {
   /// Writes a test result JSON file.
   Future<void> writeTestResult(AllureTestResult result) async {
     await ensureInitialized();
-    final file =
-        File(p.join(_outputDirectory.path, '${result.uuid}-result.json'));
+    final file = File(
+      p.join(_outputDirectory.path, '${result.uuid}-result.json'),
+    );
     await _writeStringAtomically(
       file,
       const JsonEncoder.withIndent('  ').convert(result.toJson()),
@@ -81,8 +82,9 @@ class AllureResultsWriter {
   /// Writes a test result container JSON file.
   Future<void> writeContainer(AllureTestResultContainer container) async {
     await ensureInitialized();
-    final file =
-        File(p.join(_outputDirectory.path, '${container.uuid}-container.json'));
+    final file = File(
+      p.join(_outputDirectory.path, '${container.uuid}-container.json'),
+    );
     await _writeStringAtomically(
       file,
       const JsonEncoder.withIndent('  ').convert(container.toJson()),
@@ -190,27 +192,25 @@ class AllureResultsWriter {
       fileExtension: fileExtension,
       originalPath: originalPath,
     );
-    return writePreparedAttachment(
-      prepared,
-      (path) async {
-        final file = File(path);
-        final sink = file.openWrite();
-        try {
-          await for (final chunk in content) {
-            sink.add(chunk);
-          }
-        } finally {
-          await sink.close();
+    return writePreparedAttachment(prepared, (path) async {
+      final file = File(path);
+      final sink = file.openWrite();
+      try {
+        await for (final chunk in content) {
+          sink.add(chunk);
         }
-      },
-    );
+      } finally {
+        await sink.close();
+      }
+    });
   }
 
   /// Writes run-level global data.
   Future<void> writeGlobals(AllureGlobals globals) async {
     await ensureInitialized();
-    final file =
-        File(p.join(_outputDirectory.path, '${_uuid.v4()}-globals.json'));
+    final file = File(
+      p.join(_outputDirectory.path, '${_uuid.v4()}-globals.json'),
+    );
     await _writeStringAtomically(
       file,
       const JsonEncoder.withIndent('  ').convert(globals.toJson()),
@@ -232,9 +232,9 @@ class AllureResultsWriter {
     final file = File(p.join(_outputDirectory.path, 'categories.json'));
     await _writeStringAtomically(
       file,
-      const JsonEncoder.withIndent('  ').convert(
-        categories.map((category) => category.toJson()).toList(),
-      ),
+      const JsonEncoder.withIndent(
+        '  ',
+      ).convert(categories.map((category) => category.toJson()).toList()),
     );
   }
 

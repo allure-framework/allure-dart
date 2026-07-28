@@ -12,40 +12,43 @@ void main() {
   installAllure();
 
   group('reference parity helpers', () {
-    test('classifies unexpected errors as broken despite test_api frames',
-        () async {
-      await description('''
+    test(
+      'classifies unexpected errors as broken despite test_api frames',
+      () async {
+        await description('''
 Verifies that non-assertion errors stay `broken` even when the stack includes `package:test_api` frames.
 
 A naive `package:test` substring check would also match `package:test_api`, which appears on every framework-mediated throw and would incorrectly collapse unexpected errors into `failed`.
 ''');
 
-      await step('Classify a StateError whose stack mentions test_api', (_) {
-        final status = getStatusFromError(
-          StateError('boom'),
-          StackTrace.fromString(
-            '#0      main (file:///tmp/sample_test.dart:5:5)\n'
-            '#1      Declarer.test (package:test_api/src/backend/declarer.dart:253:25)\n',
-          ),
-        );
-        expect(status, AllureStatus.broken);
-      });
+        await step('Classify a StateError whose stack mentions test_api', (_) {
+          final status = getStatusFromError(
+            StateError('boom'),
+            StackTrace.fromString(
+              '#0      main (file:///tmp/sample_test.dart:5:5)\n'
+              '#1      Declarer.test (package:test_api/src/backend/declarer.dart:253:25)\n',
+            ),
+          );
+          expect(status, AllureStatus.broken);
+        });
 
-      await step('Still classify matcher stack frames as failed', (_) {
-        final status = getStatusFromError(
-          Exception('nope'),
-          StackTrace.fromString(
-            '#0      expect (package:matcher/src/expect/expect.dart:65:3)\n'
-            '#1      main (file:///tmp/sample_test.dart:5:5)\n',
-          ),
-        );
-        expect(status, AllureStatus.failed);
-      });
-    });
+        await step('Still classify matcher stack frames as failed', (_) {
+          final status = getStatusFromError(
+            Exception('nope'),
+            StackTrace.fromString(
+              '#0      expect (package:matcher/src/expect/expect.dart:65:3)\n'
+              '#1      main (file:///tmp/sample_test.dart:5:5)\n',
+            ),
+          );
+          expect(status, AllureStatus.failed);
+        });
+      },
+    );
 
-    test('lets env and config overrides replace automatic adapter labels',
-        () async {
-      await description('''
+    test(
+      'lets env and config overrides replace automatic adapter labels',
+      () async {
+        await description('''
 Verifies issue #12 and the same override rule for the rest of the adapter-generated
 singleton label set (`framework`, `language`, `host`, `thread`, `package`,
 `testClass`, `testMethod`).
@@ -54,46 +57,45 @@ Automatic values must not survive alongside an env or config override with the
 same name. Multi-value labels such as `tag` must still be allowed to repeat.
 ''');
 
-      await step('Prefer ALLURE_LABEL_* when building host/thread helpers',
-          (_) {
-        expect(
-          getHostLabel(<String, String>{'ALLURE_LABEL_host': 'ci-runner-01'})
-              .value,
-          'ci-runner-01',
-        );
-        expect(
-          getThreadLabel(
-            null,
-            <String, String>{'ALLURE_LABEL_thread': 'worker-7'},
-          ).value,
-          'worker-7',
-        );
-      });
-
-      await step(
-        'Collapse singleton labels keeps last override, preserves tag repeats',
-        (_) {
-          final collapsed = collapseSingletonLabels(<AllureLabel>[
-            const AllureLabel(name: 'framework', value: 'dart-test'),
-            const AllureLabel(name: 'language', value: 'dart'),
-            const AllureLabel(name: 'host', value: 'auto-host'),
-            const AllureLabel(name: 'tag', value: 'a'),
-            const AllureLabel(name: 'thread', value: 'pid-1'),
-            const AllureLabel(name: 'package', value: 'test/auto.dart'),
-            const AllureLabel(name: 'testClass', value: 'AutoClass'),
-            const AllureLabel(name: 'testMethod', value: 'autoMethod'),
-            const AllureLabel(name: 'framework', value: 'custom-framework'),
-            const AllureLabel(name: 'language', value: 'custom-lang'),
-            const AllureLabel(name: 'host', value: 'ci-runner-01'),
-            const AllureLabel(name: 'tag', value: 'b'),
-            const AllureLabel(name: 'thread', value: 'worker-7'),
-            const AllureLabel(name: 'package', value: 'custom/package.dart'),
-            const AllureLabel(name: 'testClass', value: 'CustomClass'),
-            const AllureLabel(name: 'testMethod', value: 'customMethod'),
-          ]);
+        await step('Prefer ALLURE_LABEL_* when building host/thread helpers', (
+          _,
+        ) {
           expect(
-            _labelPairs(collapsed),
-            <String>[
+            getHostLabel(<String, String>{
+              'ALLURE_LABEL_host': 'ci-runner-01',
+            }).value,
+            'ci-runner-01',
+          );
+          expect(
+            getThreadLabel(null, <String, String>{
+              'ALLURE_LABEL_thread': 'worker-7',
+            }).value,
+            'worker-7',
+          );
+        });
+
+        await step(
+          'Collapse singleton labels keeps last override, preserves tag repeats',
+          (_) {
+            final collapsed = collapseSingletonLabels(<AllureLabel>[
+              const AllureLabel(name: 'framework', value: 'dart-test'),
+              const AllureLabel(name: 'language', value: 'dart'),
+              const AllureLabel(name: 'host', value: 'auto-host'),
+              const AllureLabel(name: 'tag', value: 'a'),
+              const AllureLabel(name: 'thread', value: 'pid-1'),
+              const AllureLabel(name: 'package', value: 'test/auto.dart'),
+              const AllureLabel(name: 'testClass', value: 'AutoClass'),
+              const AllureLabel(name: 'testMethod', value: 'autoMethod'),
+              const AllureLabel(name: 'framework', value: 'custom-framework'),
+              const AllureLabel(name: 'language', value: 'custom-lang'),
+              const AllureLabel(name: 'host', value: 'ci-runner-01'),
+              const AllureLabel(name: 'tag', value: 'b'),
+              const AllureLabel(name: 'thread', value: 'worker-7'),
+              const AllureLabel(name: 'package', value: 'custom/package.dart'),
+              const AllureLabel(name: 'testClass', value: 'CustomClass'),
+              const AllureLabel(name: 'testMethod', value: 'customMethod'),
+            ]);
+            expect(_labelPairs(collapsed), <String>[
               'tag=a',
               'framework=custom-framework',
               'language=custom-lang',
@@ -103,11 +105,8 @@ same name. Multi-value labels such as `tag` must still be allowed to repeat.
               'package=custom/package.dart',
               'testClass=CustomClass',
               'testMethod=customMethod',
-            ],
-          );
-          expect(
-            singletonAutomaticLabelNames,
-            <String>{
+            ]);
+            expect(singletonAutomaticLabelNames, <String>{
               'framework',
               'language',
               'host',
@@ -115,94 +114,96 @@ same name. Multi-value labels such as `tag` must still be allowed to repeat.
               'package',
               'testClass',
               'testMethod',
-            },
-          );
-        },
-      );
-
-      final resultsDir = await step(
-        'Create isolated Allure results directory',
-        (_) => Directory.systemTemp.createTemp('allure_dart_label_override_'),
-      );
-      addTearDown(() async {
-        if (resultsDir.existsSync()) {
-          await resultsDir.delete(recursive: true);
-        }
-      });
-
-      late Map<String, dynamic> result;
-
-      await step(
-        'Write a result with automatic adapter labels then config overrides',
-        (_) async {
-          final lifecycle = AllureLifecycle(
-            writer: AllureResultsWriter(outputDirectory: resultsDir.path),
-            // Simulates config / late-applied override labels that land after
-            // the automatic adapter labels added at startTest.
-            globalLabels: const <AllureLabel>[
-              AllureLabel(name: 'framework', value: 'custom-framework'),
-              AllureLabel(name: 'language', value: 'custom-lang'),
-              AllureLabel(name: 'host', value: 'ci-runner-01'),
-              AllureLabel(name: 'thread', value: 'worker-7'),
-              AllureLabel(name: 'package', value: 'custom/package.dart'),
-              AllureLabel(name: 'testClass', value: 'CustomClass'),
-              AllureLabel(name: 'testMethod', value: 'customMethod'),
-            ],
-          );
-          final testUuid = lifecycle.startTest(
-            name: 'override labels',
-            fullName: 'suite/file#override-labels',
-            labels: <AllureLabel>[
-              const AllureLabel(name: 'framework', value: 'dart-test'),
-              const AllureLabel(name: 'language', value: 'dart'),
-              const AllureLabel(name: 'host', value: 'auto-host'),
-              const AllureLabel(name: 'thread', value: 'pid-1'),
-              const AllureLabel(name: 'package', value: 'test/auto.dart'),
-              const AllureLabel(name: 'testClass', value: 'AutoClass'),
-              const AllureLabel(name: 'testMethod', value: 'autoMethod'),
-              const AllureLabel(name: 'tag', value: 'keep-me'),
-            ],
-          );
-          await lifecycle.stopTest(testUuid, status: AllureStatus.passed);
-          await lifecycle.writeTest(testUuid);
-
-          final resultFile = resultsDir
-              .listSync()
-              .whereType<File>()
-              .singleWhere((file) => file.path.endsWith('-result.json'));
-          result =
-              jsonDecode(resultFile.readAsStringSync()) as Map<String, dynamic>;
-          await _attachDirectoryFiles(resultsDir);
-        },
-      );
-
-      await step('Verify each singleton label keeps only the override', (_) {
-        final labels =
-            (result['labels'] as List<dynamic>).cast<Map<String, dynamic>>();
-        for (final entry in <String, String>{
-          'framework': 'custom-framework',
-          'language': 'custom-lang',
-          'host': 'ci-runner-01',
-          'thread': 'worker-7',
-          'package': 'custom/package.dart',
-          'testClass': 'CustomClass',
-          'testMethod': 'customMethod',
-        }.entries) {
-          final values = labels
-              .where((label) => label['name'] == entry.key)
-              .map((label) => label['value'])
-              .toList();
-          expect(values, <String>[entry.value],
-              reason: 'expected a single ${entry.key} override');
-        }
-        expect(
-          labels.any(
-            (label) => label['name'] == 'tag' && label['value'] == 'keep-me',
-          ),
-          isTrue,
+            });
+          },
         );
-      });
-    });
+
+        final resultsDir = await step(
+          'Create isolated Allure results directory',
+          (_) => Directory.systemTemp.createTemp('allure_dart_label_override_'),
+        );
+        addTearDown(() async {
+          if (resultsDir.existsSync()) {
+            await resultsDir.delete(recursive: true);
+          }
+        });
+
+        late Map<String, dynamic> result;
+
+        await step(
+          'Write a result with automatic adapter labels then config overrides',
+          (_) async {
+            final lifecycle = AllureLifecycle(
+              writer: AllureResultsWriter(outputDirectory: resultsDir.path),
+              // Simulates config / late-applied override labels that land after
+              // the automatic adapter labels added at startTest.
+              globalLabels: const <AllureLabel>[
+                AllureLabel(name: 'framework', value: 'custom-framework'),
+                AllureLabel(name: 'language', value: 'custom-lang'),
+                AllureLabel(name: 'host', value: 'ci-runner-01'),
+                AllureLabel(name: 'thread', value: 'worker-7'),
+                AllureLabel(name: 'package', value: 'custom/package.dart'),
+                AllureLabel(name: 'testClass', value: 'CustomClass'),
+                AllureLabel(name: 'testMethod', value: 'customMethod'),
+              ],
+            );
+            final testUuid = lifecycle.startTest(
+              name: 'override labels',
+              fullName: 'suite/file#override-labels',
+              labels: <AllureLabel>[
+                const AllureLabel(name: 'framework', value: 'dart-test'),
+                const AllureLabel(name: 'language', value: 'dart'),
+                const AllureLabel(name: 'host', value: 'auto-host'),
+                const AllureLabel(name: 'thread', value: 'pid-1'),
+                const AllureLabel(name: 'package', value: 'test/auto.dart'),
+                const AllureLabel(name: 'testClass', value: 'AutoClass'),
+                const AllureLabel(name: 'testMethod', value: 'autoMethod'),
+                const AllureLabel(name: 'tag', value: 'keep-me'),
+              ],
+            );
+            await lifecycle.stopTest(testUuid, status: AllureStatus.passed);
+            await lifecycle.writeTest(testUuid);
+
+            final resultFile = resultsDir
+                .listSync()
+                .whereType<File>()
+                .singleWhere((file) => file.path.endsWith('-result.json'));
+            result =
+                jsonDecode(resultFile.readAsStringSync())
+                    as Map<String, dynamic>;
+            await _attachDirectoryFiles(resultsDir);
+          },
+        );
+
+        await step('Verify each singleton label keeps only the override', (_) {
+          final labels = (result['labels'] as List<dynamic>)
+              .cast<Map<String, dynamic>>();
+          for (final entry in <String, String>{
+            'framework': 'custom-framework',
+            'language': 'custom-lang',
+            'host': 'ci-runner-01',
+            'thread': 'worker-7',
+            'package': 'custom/package.dart',
+            'testClass': 'CustomClass',
+            'testMethod': 'customMethod',
+          }.entries) {
+            final values = labels
+                .where((label) => label['name'] == entry.key)
+                .map((label) => label['value'])
+                .toList();
+            expect(values, <String>[
+              entry.value,
+            ], reason: 'expected a single ${entry.key} override');
+          }
+          expect(
+            labels.any(
+              (label) => label['name'] == 'tag' && label['value'] == 'keep-me',
+            ),
+            isTrue,
+          );
+        });
+      },
+    );
 
     test('derives suite labels from title path hierarchy', () async {
       await description('''
@@ -220,9 +221,12 @@ One title path segment should become `suite`, two segments should become `parent
             getSuiteLabels(<String>['test/file.dart', 'parent group']),
           ),
           'long': _labelPairs(
-            getSuiteLabels(
-              <String>['test/file.dart', 'parent group', 'child', 'case'],
-            ),
+            getSuiteLabels(<String>[
+              'test/file.dart',
+              'parent group',
+              'child',
+              'case',
+            ]),
           ),
         };
         await attachment(
@@ -240,10 +244,7 @@ One title path segment should become `suite`, two segments should become `parent
       );
       await _verifyValue(
         'Verify two segment suite labels',
-        expected: <String>[
-          'parentSuite=test/file.dart',
-          'suite=parent group',
-        ],
+        expected: <String>['parentSuite=test/file.dart', 'suite=parent group'],
         actual: generated['two'],
       );
       await _verifyValue(
@@ -257,29 +258,30 @@ One title path segment should become `suite`, two segments should become `parent
       );
     });
 
-    test('derives testCaseId and historyId from sorted non-excluded parameters',
-        () async {
-      await description('''
+    test(
+      'derives testCaseId and historyId from sorted non-excluded parameters',
+      () async {
+        await description('''
 Verifies that the commons lifecycle derives stable Allure `testCaseId` and `historyId` values from a test's full name and parameters.
 
 The result should use the MD5 hash of the full name as `testCaseId`, include only non-excluded parameters in the `historyId` suffix, and ignore excluded parameters such as retry metadata.
 ''');
-      final resultsDir = await step(
-        'Create isolated Allure results directory',
-        (_) => Directory.systemTemp.createTemp('allure_dart_reference_'),
-      );
-      addTearDown(() async {
-        if (resultsDir.existsSync()) {
-          await resultsDir.delete(recursive: true);
-        }
-      });
+        final resultsDir = await step(
+          'Create isolated Allure results directory',
+          (_) => Directory.systemTemp.createTemp('allure_dart_reference_'),
+        );
+        addTearDown(() async {
+          if (resultsDir.existsSync()) {
+            await resultsDir.delete(recursive: true);
+          }
+        });
 
-      const fullName = 'suite/file#parameterized';
-      late Map<String, dynamic> result;
+        const fullName = 'suite/file#parameterized';
+        late Map<String, dynamic> result;
 
-      await step(
-        'Write result with included and excluded parameters',
-        (_) async {
+        await step('Write result with included and excluded parameters', (
+          _,
+        ) async {
           final lifecycle = AllureLifecycle(
             writer: AllureResultsWriter(outputDirectory: resultsDir.path),
           );
@@ -288,19 +290,12 @@ The result should use the MD5 hash of the full name as `testCaseId`, include onl
             fullName: fullName,
             parameters: <AllureParameter>[
               const AllureParameter(name: 'browser', value: 'webkit'),
-              const AllureParameter(
-                name: 'retry',
-                value: '1',
-                excluded: true,
-              ),
+              const AllureParameter(name: 'retry', value: '1', excluded: true),
               const AllureParameter(name: 'attempt', value: '2'),
             ],
           );
 
-          await lifecycle.stopTest(
-            testUuid,
-            status: AllureStatus.passed,
-          );
+          await lifecycle.stopTest(testUuid, status: AllureStatus.passed);
           await lifecycle.writeTest(testUuid);
 
           final resultFile = resultsDir
@@ -311,12 +306,11 @@ The result should use the MD5 hash of the full name as `testCaseId`, include onl
           result = jsonDecode(resultJson) as Map<String, dynamic>;
 
           await _attachDirectoryFiles(resultsDir);
-        },
-      );
+        });
 
-      await step(
-        'Compare generated identifiers with expected hashes',
-        (_) async {
+        await step('Compare generated identifiers with expected hashes', (
+          _,
+        ) async {
           final expectedTestCaseId = md5Hash(fullName);
           final expectedHistoryId =
               '$expectedTestCaseId:${md5Hash('attempt:2,browser:webkit')}';
@@ -341,9 +335,9 @@ The result should use the MD5 hash of the full name as `testCaseId`, include onl
               expect(result['historyId'], expectedHistoryId);
             },
           );
-        },
-      );
-    });
+        });
+      },
+    );
 
     test('keeps skipped tests in pending stage', () async {
       await description('''
@@ -363,49 +357,39 @@ The written Allure result should keep the test status as `skipped` and resolve t
 
       late Map<String, dynamic> result;
 
-      await step(
-        'Write skipped result without an explicit stage',
-        (_) async {
-          final lifecycle = AllureLifecycle(
-            writer: AllureResultsWriter(outputDirectory: resultsDir.path),
-          );
-          final testUuid = lifecycle.startTest(
-            name: 'skipped',
-            fullName: 'suite/file#skipped',
-          );
+      await step('Write skipped result without an explicit stage', (_) async {
+        final lifecycle = AllureLifecycle(
+          writer: AllureResultsWriter(outputDirectory: resultsDir.path),
+        );
+        final testUuid = lifecycle.startTest(
+          name: 'skipped',
+          fullName: 'suite/file#skipped',
+        );
 
-          await lifecycle.stopTest(
-            testUuid,
-            status: AllureStatus.skipped,
-          );
-          await lifecycle.writeTest(testUuid);
+        await lifecycle.stopTest(testUuid, status: AllureStatus.skipped);
+        await lifecycle.writeTest(testUuid);
 
-          final resultFile = resultsDir
-              .listSync()
-              .whereType<File>()
-              .singleWhere((file) => file.path.endsWith('-result.json'));
-          final resultJson = resultFile.readAsStringSync();
-          result = jsonDecode(resultJson) as Map<String, dynamic>;
+        final resultFile = resultsDir.listSync().whereType<File>().singleWhere(
+          (file) => file.path.endsWith('-result.json'),
+        );
+        final resultJson = resultFile.readAsStringSync();
+        result = jsonDecode(resultJson) as Map<String, dynamic>;
 
-          await _attachDirectoryFiles(resultsDir);
-        },
-      );
+        await _attachDirectoryFiles(resultsDir);
+      });
 
-      await step(
-        'Verify skipped status resolves to pending stage',
-        (_) async {
-          await _verifyValue(
-            'Verify skipped result status',
-            expected: 'skipped',
-            actual: result['status'],
-          );
-          await _verifyValue(
-            'Verify skipped result stage',
-            expected: 'pending',
-            actual: result['stage'],
-          );
-        },
-      );
+      await step('Verify skipped status resolves to pending stage', (_) async {
+        await _verifyValue(
+          'Verify skipped result status',
+          expected: 'skipped',
+          actual: result['status'],
+        );
+        await _verifyValue(
+          'Verify skipped result stage',
+          expected: 'pending',
+          actual: result['stage'],
+        );
+      });
     });
 
     test('writes globals, categories, and environment artifacts', () async {
@@ -449,86 +433,61 @@ The writer should create `environment.properties`, `categories.json`, and a glob
         },
       );
 
-      await step(
-        'Verify global artifacts and category expression',
-        (_) async {
-          final environmentFile =
-              File(p.join(resultsDir.path, 'environment.properties'));
-          final categoriesFile =
-              File(p.join(resultsDir.path, 'categories.json'));
-          final globalsFiles = resultsDir
-              .listSync()
-              .whereType<File>()
-              .where((file) => file.path.endsWith('-globals.json'))
-              .toList();
-          final environmentExists = environmentFile.existsSync();
-          final categoriesExists = categoriesFile.existsSync();
-          final environmentProperties =
-              environmentExists ? environmentFile.readAsStringSync() : null;
-          final categories = categoriesExists
-              ? jsonDecode(categoriesFile.readAsStringSync()) as List<dynamic>
-              : const <dynamic>[];
-          final globalsFileNames = globalsFiles
-              .map((file) => p.basename(file.path))
-              .toList()
-            ..sort();
+      await step('Verify global artifacts and category expression', (_) async {
+        final environmentFile = File(
+          p.join(resultsDir.path, 'environment.properties'),
+        );
+        final categoriesFile = File(p.join(resultsDir.path, 'categories.json'));
+        final globalsFiles = resultsDir
+            .listSync()
+            .whereType<File>()
+            .where((file) => file.path.endsWith('-globals.json'))
+            .toList();
+        final environmentExists = environmentFile.existsSync();
+        final categoriesExists = categoriesFile.existsSync();
+        final environmentProperties = environmentExists
+            ? environmentFile.readAsStringSync()
+            : null;
+        final categories = categoriesExists
+            ? jsonDecode(categoriesFile.readAsStringSync()) as List<dynamic>
+            : const <dynamic>[];
+        final globalsFileNames =
+            globalsFiles.map((file) => p.basename(file.path)).toList()..sort();
 
-          await step(
-            'Verify environment.properties exists',
-            (check) async {
-              await check.parameter('expected', true);
-              await check.parameter('actual', environmentExists);
-              expect(environmentExists, isTrue);
-            },
-          );
-          await step(
-            'Verify environment.properties content',
-            (check) async {
-              await check.parameter('expected', 'os=macos\n');
-              await check.parameter('actual', environmentProperties);
-              expect(environmentProperties, 'os=macos\n');
-            },
-          );
-          await step(
-            'Verify categories.json exists',
-            (check) async {
-              await check.parameter('expected', true);
-              await check.parameter('actual', categoriesExists);
-              expect(categoriesExists, isTrue);
-            },
-          );
-          await step(
-            'Verify categories.json has one category',
-            (check) async {
-              await check.parameter('expected', 1);
-              await check.parameter('actual', categories.length);
-              expect(categories, hasLength(1));
-            },
-          );
-          await step(
-            'Verify category messageRegex equals boom',
-            (check) async {
-              final actualMessageRegex = categories.isEmpty
-                  ? null
-                  : (categories.single as Map<String, dynamic>)['messageRegex'];
-              await check.parameter('expected', 'boom');
-              await check.parameter('actual', actualMessageRegex);
-              expect(actualMessageRegex, 'boom');
-            },
-          );
-          await step(
-            'Verify globals error artifact was written',
-            (check) async {
-              await check.parameter(
-                'expected',
-                'at least one *-globals.json file',
-              );
-              await check.parameter('actual', globalsFileNames);
-              expect(globalsFiles, isNotEmpty);
-            },
-          );
-        },
-      );
+        await step('Verify environment.properties exists', (check) async {
+          await check.parameter('expected', true);
+          await check.parameter('actual', environmentExists);
+          expect(environmentExists, isTrue);
+        });
+        await step('Verify environment.properties content', (check) async {
+          await check.parameter('expected', 'os=macos\n');
+          await check.parameter('actual', environmentProperties);
+          expect(environmentProperties, 'os=macos\n');
+        });
+        await step('Verify categories.json exists', (check) async {
+          await check.parameter('expected', true);
+          await check.parameter('actual', categoriesExists);
+          expect(categoriesExists, isTrue);
+        });
+        await step('Verify categories.json has one category', (check) async {
+          await check.parameter('expected', 1);
+          await check.parameter('actual', categories.length);
+          expect(categories, hasLength(1));
+        });
+        await step('Verify category messageRegex equals boom', (check) async {
+          final actualMessageRegex = categories.isEmpty
+              ? null
+              : (categories.single as Map<String, dynamic>)['messageRegex'];
+          await check.parameter('expected', 'boom');
+          await check.parameter('actual', actualMessageRegex);
+          expect(actualMessageRegex, 'boom');
+        });
+        await step('Verify globals error artifact was written', (check) async {
+          await check.parameter('expected', 'at least one *-globals.json file');
+          await check.parameter('actual', globalsFileNames);
+          expect(globalsFiles, isNotEmpty);
+        });
+      });
     });
 
     test('serializes extended model fields and executor sidecar', () async {
@@ -551,82 +510,78 @@ The lifecycle should preserve `testCaseName`, status classification flags, optio
       late Map<String, dynamic> container;
       late Map<String, dynamic> executor;
 
-      await step(
-        'Write result, scope container, and executor metadata',
-        (_) async {
-          final lifecycle = AllureLifecycle(
-            writer: AllureResultsWriter(outputDirectory: resultsDir.path),
-            executorInfo: const AllureExecutorInfo(
-              name: 'GitHub Actions',
-              type: 'github',
-              buildName: 'reference-contract',
-              buildOrder: 42,
-            ),
-          );
-          final scopeId = lifecycle.ensureScope(
-            id: 'scope:extended',
-            name: 'extended scope',
-            expectedChildrenCount: 1,
-          );
-          final fixtureUuid = lifecycle.startFixture(
-            scopeId: scopeId,
-            before: true,
-            name: 'setUpAll',
-          );
-          await lifecycle.handleRuntimeMessage(
-            RuntimeMessage(
-              type: 'metadata',
-              data: <String, Object?>{
-                'description': 'scope defaults',
-                'links': <Map<String, String>>[
-                  const AllureLink(
-                    url: 'https://example.test/scope',
-                    name: 'scope',
-                    type: 'custom',
-                  ).toJson(),
-                ],
-              },
-            ),
-            rootUuid: fixtureUuid,
-          );
-          await lifecycle.stopFixture(
-            fixtureUuid,
-            status: AllureStatus.passed,
-          );
+      await step('Write result, scope container, and executor metadata', (
+        _,
+      ) async {
+        final lifecycle = AllureLifecycle(
+          writer: AllureResultsWriter(outputDirectory: resultsDir.path),
+          executorInfo: const AllureExecutorInfo(
+            name: 'GitHub Actions',
+            type: 'github',
+            buildName: 'reference-contract',
+            buildOrder: 42,
+          ),
+        );
+        final scopeId = lifecycle.ensureScope(
+          id: 'scope:extended',
+          name: 'extended scope',
+          expectedChildrenCount: 1,
+        );
+        final fixtureUuid = lifecycle.startFixture(
+          scopeId: scopeId,
+          before: true,
+          name: 'setUpAll',
+        );
+        await lifecycle.handleRuntimeMessage(
+          RuntimeMessage(
+            type: 'metadata',
+            data: <String, Object?>{
+              'description': 'scope defaults',
+              'links': <Map<String, String>>[
+                const AllureLink(
+                  url: 'https://example.test/scope',
+                  name: 'scope',
+                  type: 'custom',
+                ).toJson(),
+              ],
+            },
+          ),
+          rootUuid: fixtureUuid,
+        );
+        await lifecycle.stopFixture(fixtureUuid, status: AllureStatus.passed);
 
-          final testUuid = lifecycle.startTest(
-            name: 'display name',
-            fullName: 'suite/file#logical name',
-            testCaseName: 'logical name',
-            statusDetails: const AllureStatusDetails(
-              known: true,
-              muted: false,
-              flaky: true,
-            ),
-            scopeIds: <String>[scopeId],
-          );
-          await lifecycle.stopTest(testUuid, status: AllureStatus.passed);
-          await lifecycle.writeTest(testUuid);
+        final testUuid = lifecycle.startTest(
+          name: 'display name',
+          fullName: 'suite/file#logical name',
+          testCaseName: 'logical name',
+          statusDetails: const AllureStatusDetails(
+            known: true,
+            muted: false,
+            flaky: true,
+          ),
+          scopeIds: <String>[scopeId],
+        );
+        await lifecycle.stopTest(testUuid, status: AllureStatus.passed);
+        await lifecycle.writeTest(testUuid);
 
-          final resultFile = resultsDir
-              .listSync()
-              .whereType<File>()
-              .singleWhere((file) => file.path.endsWith('-result.json'));
-          final containerFile = resultsDir
-              .listSync()
-              .whereType<File>()
-              .singleWhere((file) => file.path.endsWith('-container.json'));
-          final executorFile = File(p.join(resultsDir.path, 'executor.json'));
-          result =
-              jsonDecode(resultFile.readAsStringSync()) as Map<String, dynamic>;
-          container = jsonDecode(containerFile.readAsStringSync())
-              as Map<String, dynamic>;
-          executor = jsonDecode(executorFile.readAsStringSync())
-              as Map<String, dynamic>;
+        final resultFile = resultsDir.listSync().whereType<File>().singleWhere(
+          (file) => file.path.endsWith('-result.json'),
+        );
+        final containerFile = resultsDir
+            .listSync()
+            .whereType<File>()
+            .singleWhere((file) => file.path.endsWith('-container.json'));
+        final executorFile = File(p.join(resultsDir.path, 'executor.json'));
+        result =
+            jsonDecode(resultFile.readAsStringSync()) as Map<String, dynamic>;
+        container =
+            jsonDecode(containerFile.readAsStringSync())
+                as Map<String, dynamic>;
+        executor =
+            jsonDecode(executorFile.readAsStringSync()) as Map<String, dynamic>;
 
-          await _attachDirectoryFiles(resultsDir);
-        },
-      );
+        await _attachDirectoryFiles(resultsDir);
+      });
 
       await step('Verify extended serialized fields', (_) async {
         final statusDetails = result['statusDetails'] as Map<String, dynamic>;
@@ -686,138 +641,143 @@ The lifecycle should preserve `testCaseName`, status classification flags, optio
     });
 
     test(
-        'keeps after-fixture metadata local to the fixture and out of the linked test',
-        () async {
-      await description('''
+      'keeps after-fixture metadata local to the fixture and out of the linked test',
+      () async {
+        await description('''
 Verifies that metadata emitted while an AFTER fixture is active stays local instead of propagating like before-fixture metadata does.
 
 The description and parameter set during an after fixture should be recorded directly on that fixture's entry inside the container, not on the container's shared scope-level fields. A label set during the same after fixture has no home on the fixture model, and none of this metadata may leak onto the linked test result.
 ''');
-      final resultsDir = await step(
-        'Create isolated Allure results directory',
-        (_) => Directory.systemTemp.createTemp('allure_dart_reference_'),
-      );
-      addTearDown(() async {
-        if (resultsDir.existsSync()) {
-          await resultsDir.delete(recursive: true);
-        }
-      });
+        final resultsDir = await step(
+          'Create isolated Allure results directory',
+          (_) => Directory.systemTemp.createTemp('allure_dart_reference_'),
+        );
+        addTearDown(() async {
+          if (resultsDir.existsSync()) {
+            await resultsDir.delete(recursive: true);
+          }
+        });
 
-      late Map<String, dynamic> result;
-      late Map<String, dynamic> container;
+        late Map<String, dynamic> result;
+        late Map<String, dynamic> container;
 
-      await step(
-        'Write after-fixture metadata, stop fixture, then run linked test',
-        (_) async {
-          final lifecycle = AllureLifecycle(
-            writer: AllureResultsWriter(outputDirectory: resultsDir.path),
-          );
-          final scopeId = lifecycle.ensureScope(
-            id: 'scope:after-fixture',
-            name: 'after fixture scope',
-            expectedChildrenCount: 1,
-          );
-          final fixtureUuid = lifecycle.startFixture(
-            scopeId: scopeId,
-            before: false,
-            name: 'tearDown',
-          );
-          await lifecycle.handleRuntimeMessage(
-            RuntimeMessage(
-              type: 'metadata',
-              data: <String, Object?>{
-                'description': 'after fixture notes',
-                'labels': <Map<String, String>>[
-                  const AllureLabel(name: 'owner', value: 'team-x').toJson(),
-                ],
-                'parameters': <Map<String, Object?>>[
-                  const AllureParameter(
-                    name: 'cleanupTarget',
-                    value: 'cache',
-                  ).toJson(),
-                ],
-              },
-            ),
-            rootUuid: fixtureUuid,
-          );
-          await lifecycle.stopFixture(
-            fixtureUuid,
-            status: AllureStatus.passed,
-          );
+        await step(
+          'Write after-fixture metadata, stop fixture, then run linked test',
+          (_) async {
+            final lifecycle = AllureLifecycle(
+              writer: AllureResultsWriter(outputDirectory: resultsDir.path),
+            );
+            final scopeId = lifecycle.ensureScope(
+              id: 'scope:after-fixture',
+              name: 'after fixture scope',
+              expectedChildrenCount: 1,
+            );
+            final fixtureUuid = lifecycle.startFixture(
+              scopeId: scopeId,
+              before: false,
+              name: 'tearDown',
+            );
+            await lifecycle.handleRuntimeMessage(
+              RuntimeMessage(
+                type: 'metadata',
+                data: <String, Object?>{
+                  'description': 'after fixture notes',
+                  'labels': <Map<String, String>>[
+                    const AllureLabel(name: 'owner', value: 'team-x').toJson(),
+                  ],
+                  'parameters': <Map<String, Object?>>[
+                    const AllureParameter(
+                      name: 'cleanupTarget',
+                      value: 'cache',
+                    ).toJson(),
+                  ],
+                },
+              ),
+              rootUuid: fixtureUuid,
+            );
+            await lifecycle.stopFixture(
+              fixtureUuid,
+              status: AllureStatus.passed,
+            );
 
-          final testUuid = lifecycle.startTest(
-            name: 'after fixture linked test',
-            fullName: 'suite/file#after-fixture-linked',
-            scopeIds: <String>[scopeId],
+            final testUuid = lifecycle.startTest(
+              name: 'after fixture linked test',
+              fullName: 'suite/file#after-fixture-linked',
+              scopeIds: <String>[scopeId],
+            );
+            await lifecycle.stopTest(testUuid, status: AllureStatus.passed);
+            await lifecycle.writeTest(testUuid);
+
+            final resultFile = resultsDir
+                .listSync()
+                .whereType<File>()
+                .singleWhere((file) => file.path.endsWith('-result.json'));
+            final containerFile = resultsDir
+                .listSync()
+                .whereType<File>()
+                .singleWhere((file) => file.path.endsWith('-container.json'));
+            result =
+                jsonDecode(resultFile.readAsStringSync())
+                    as Map<String, dynamic>;
+            container =
+                jsonDecode(containerFile.readAsStringSync())
+                    as Map<String, dynamic>;
+
+            await _attachDirectoryFiles(resultsDir);
+          },
+        );
+
+        await step('Verify after-fixture metadata stays local', (_) async {
+          final afters = container['afters'] as List<dynamic>;
+          await _verifyValue(
+            'Verify container has exactly one after fixture',
+            expected: 1,
+            actual: afters.length,
           );
-          await lifecycle.stopTest(testUuid, status: AllureStatus.passed);
-          await lifecycle.writeTest(testUuid);
-
-          final resultFile = resultsDir
-              .listSync()
-              .whereType<File>()
-              .singleWhere((file) => file.path.endsWith('-result.json'));
-          final containerFile = resultsDir
-              .listSync()
-              .whereType<File>()
-              .singleWhere((file) => file.path.endsWith('-container.json'));
-          result =
-              jsonDecode(resultFile.readAsStringSync()) as Map<String, dynamic>;
-          container = jsonDecode(containerFile.readAsStringSync())
-              as Map<String, dynamic>;
-
-          await _attachDirectoryFiles(resultsDir);
-        },
-      );
-
-      await step('Verify after-fixture metadata stays local', (_) async {
-        final afters = container['afters'] as List<dynamic>;
-        await _verifyValue(
-          'Verify container has exactly one after fixture',
-          expected: 1,
-          actual: afters.length,
-        );
-        final afterFixture = afters.single as Map<String, dynamic>;
-        await _verifyValue(
-          'Verify after-fixture description is recorded on the fixture',
-          expected: 'after fixture notes',
-          actual: afterFixture['description'],
-        );
-        await _verifyContains(
-          'Verify after-fixture parameter is recorded on the fixture',
-          expectedValue: const AllureParameter(
-            name: 'cleanupTarget',
-            value: 'cache',
-          ).toJson(),
-          actualValues: afterFixture['parameters'] as List<dynamic>,
-        );
-        await _verifyValue(
-          'Verify container description stays unset '
-          '(only before fixtures propagate to the scope)',
-          expected: null,
-          actual: container['description'],
-        );
-        await _verifyValue(
-          'Verify linked test description stays unset',
-          expected: null,
-          actual: result['description'],
-        );
-        await _verifyNotContains(
-          'Verify after-fixture parameter did not leak onto the linked test',
-          unexpectedValue: const AllureParameter(
-            name: 'cleanupTarget',
-            value: 'cache',
-          ).toJson(),
-          actualValues: result['parameters'] as List<dynamic>,
-        );
-        await _verifyNotContains(
-          'Verify after-fixture label did not leak onto the linked test',
-          unexpectedValue:
-              const AllureLabel(name: 'owner', value: 'team-x').toJson(),
-          actualValues: result['labels'] as List<dynamic>,
-        );
-      });
-    });
+          final afterFixture = afters.single as Map<String, dynamic>;
+          await _verifyValue(
+            'Verify after-fixture description is recorded on the fixture',
+            expected: 'after fixture notes',
+            actual: afterFixture['description'],
+          );
+          await _verifyContains(
+            'Verify after-fixture parameter is recorded on the fixture',
+            expectedValue: const AllureParameter(
+              name: 'cleanupTarget',
+              value: 'cache',
+            ).toJson(),
+            actualValues: afterFixture['parameters'] as List<dynamic>,
+          );
+          await _verifyValue(
+            'Verify container description stays unset '
+            '(only before fixtures propagate to the scope)',
+            expected: null,
+            actual: container['description'],
+          );
+          await _verifyValue(
+            'Verify linked test description stays unset',
+            expected: null,
+            actual: result['description'],
+          );
+          await _verifyNotContains(
+            'Verify after-fixture parameter did not leak onto the linked test',
+            unexpectedValue: const AllureParameter(
+              name: 'cleanupTarget',
+              value: 'cache',
+            ).toJson(),
+            actualValues: result['parameters'] as List<dynamic>,
+          );
+          await _verifyNotContains(
+            'Verify after-fixture label did not leak onto the linked test',
+            unexpectedValue: const AllureLabel(
+              name: 'owner',
+              value: 'team-x',
+            ).toJson(),
+            actualValues: result['labels'] as List<dynamic>,
+          );
+        });
+      },
+    );
 
     test('notifies lifecycle listeners without aborting operations', () async {
       await description('''
@@ -903,10 +863,9 @@ The listener should see start, stop, write, step, container, attachment, global 
             actualValues: events,
           );
         }
-        final resultFile = resultsDir
-            .listSync()
-            .whereType<File>()
-            .singleWhere((file) => file.path.endsWith('-result.json'));
+        final resultFile = resultsDir.listSync().whereType<File>().singleWhere(
+          (file) => file.path.endsWith('-result.json'),
+        );
         final result =
             jsonDecode(resultFile.readAsStringSync()) as Map<String, dynamic>;
         await _verifyContains(
@@ -964,10 +923,9 @@ The result should not reference an attachment until the producer has fully writt
         await lifecycle.stopTest(testUuid, status: AllureStatus.passed);
         await lifecycle.writeTest(testUuid);
 
-        final resultFile = resultsDir
-            .listSync()
-            .whereType<File>()
-            .singleWhere((file) => file.path.endsWith('-result.json'));
+        final resultFile = resultsDir.listSync().whereType<File>().singleWhere(
+          (file) => file.path.endsWith('-result.json'),
+        );
         result =
             jsonDecode(resultFile.readAsStringSync()) as Map<String, dynamic>;
         await _attachDirectoryFiles(resultsDir);
@@ -999,9 +957,10 @@ The result should not reference an attachment until the producer has fully writt
       });
     });
 
-    test('parses valid empty plans and ignores unavailable test plans',
-        () async {
-      await description('''
+    test(
+      'parses valid empty plans and ignores unavailable test plans',
+      () async {
+        await description('''
 Verifies that a valid version 1.0 plan with an empty `tests` list selects no tests,
 while malformed, unsupported, versionless, and missing Allure test plans do not fail
 the process.
@@ -1010,237 +969,238 @@ The parser should return an empty `TestPlanV1` for the valid empty plan. It shou
 warn and return `null` so callers can continue without filtering when a plan cannot
 be trusted, including when every declared entry is malformed.
 ''');
-      final tempDir = await step(
-        'Create valid and unavailable test plan files',
-        (_) async {
-          final directory =
-              await Directory.systemTemp.createTemp('allure_dart_testplan_');
-          addTearDown(() async {
-            if (directory.existsSync()) {
-              await directory.delete(recursive: true);
-            }
-          });
-          await File(p.join(directory.path, 'invalid.json')).writeAsString('{');
-          await File(p.join(directory.path, 'empty.json')).writeAsString(
-            jsonEncode(<String, Object?>{
-              'version': '1.0',
-              'tests': <Object?>[],
-            }),
-          );
-          await File(p.join(directory.path, 'versionless.json')).writeAsString(
-            jsonEncode(<String, Object?>{
-              'tests': <Object?>[],
-            }),
-          );
-          await File(p.join(directory.path, 'unsupported.json')).writeAsString(
-            jsonEncode(<String, Object?>{
-              'version': '2.0',
-              'tests': <Object?>[],
-            }),
-          );
-          await File(p.join(directory.path, 'malformed-entry.json'))
-              .writeAsString(
-            jsonEncode(<String, Object?>{
-              'version': '1.0',
-              'tests': <Object?>[
-                <String, Object?>{'name': 'missing id and selector'},
-              ],
-            }),
-          );
-          await _attachDirectoryFiles(directory);
-          return directory;
-        },
-      );
-
-      await step('Verify valid empty plan selects no tests', (_) {
-        final plan = parseTestPlan(
-          <String, String>{
-            'ALLURE_TESTPLAN_PATH': p.join(tempDir.path, 'empty.json'),
+        final tempDir = await step(
+          'Create valid and unavailable test plan files',
+          (_) async {
+            final directory = await Directory.systemTemp.createTemp(
+              'allure_dart_testplan_',
+            );
+            addTearDown(() async {
+              if (directory.existsSync()) {
+                await directory.delete(recursive: true);
+              }
+            });
+            await File(
+              p.join(directory.path, 'invalid.json'),
+            ).writeAsString('{');
+            await File(p.join(directory.path, 'empty.json')).writeAsString(
+              jsonEncode(<String, Object?>{
+                'version': '1.0',
+                'tests': <Object?>[],
+              }),
+            );
+            await File(
+              p.join(directory.path, 'versionless.json'),
+            ).writeAsString(
+              jsonEncode(<String, Object?>{'tests': <Object?>[]}),
+            );
+            await File(
+              p.join(directory.path, 'unsupported.json'),
+            ).writeAsString(
+              jsonEncode(<String, Object?>{
+                'version': '2.0',
+                'tests': <Object?>[],
+              }),
+            );
+            await File(
+              p.join(directory.path, 'malformed-entry.json'),
+            ).writeAsString(
+              jsonEncode(<String, Object?>{
+                'version': '1.0',
+                'tests': <Object?>[
+                  <String, Object?>{'name': 'missing id and selector'},
+                ],
+              }),
+            );
+            await _attachDirectoryFiles(directory);
+            return directory;
           },
         );
-        expect(plan, isA<TestPlanV1>());
-        expect(plan!.tests, isEmpty);
-      });
 
-      await step('Verify unavailable test plans are ignored', (_) {
-        expect(
-          parseTestPlan(
-            <String, String>{
+        await step('Verify valid empty plan selects no tests', (_) {
+          final plan = parseTestPlan(<String, String>{
+            'ALLURE_TESTPLAN_PATH': p.join(tempDir.path, 'empty.json'),
+          });
+          expect(plan, isA<TestPlanV1>());
+          expect(plan!.tests, isEmpty);
+        });
+
+        await step('Verify unavailable test plans are ignored', (_) {
+          expect(
+            parseTestPlan(<String, String>{
               'ALLURE_TESTPLAN_PATH': p.join(tempDir.path, 'missing.json'),
-            },
-          ),
-          isNull,
-        );
-        expect(
-          parseTestPlan(
-            <String, String>{
+            }),
+            isNull,
+          );
+          expect(
+            parseTestPlan(<String, String>{
               'ALLURE_TESTPLAN_PATH': p.join(tempDir.path, 'versionless.json'),
-            },
-          ),
-          isNull,
-        );
-        expect(
-          parseTestPlan(
-            <String, String>{
+            }),
+            isNull,
+          );
+          expect(
+            parseTestPlan(<String, String>{
               'ALLURE_TESTPLAN_PATH': p.join(tempDir.path, 'invalid.json'),
-            },
-          ),
-          isNull,
-        );
-        expect(
-          parseTestPlan(
-            <String, String>{
-              'ALLURE_TESTPLAN_PATH': p.join(
-                tempDir.path,
-                'unsupported.json',
-              ),
-            },
-          ),
-          isNull,
-        );
-        expect(
-          parseTestPlan(
-            <String, String>{
+            }),
+            isNull,
+          );
+          expect(
+            parseTestPlan(<String, String>{
+              'ALLURE_TESTPLAN_PATH': p.join(tempDir.path, 'unsupported.json'),
+            }),
+            isNull,
+          );
+          expect(
+            parseTestPlan(<String, String>{
               'ALLURE_TESTPLAN_PATH': p.join(
                 tempDir.path,
                 'malformed-entry.json',
               ),
-            },
-          ),
-          isNull,
-        );
-      });
-    });
+            }),
+            isNull,
+          );
+        });
+      },
+    );
 
-    test('isolates concurrent zone contexts for steps and attachments',
-        () async {
-      await description('''
+    test(
+      'isolates concurrent zone contexts for steps and attachments',
+      () async {
+        await description('''
 Verifies that concurrent asynchronous work keeps Allure steps and attachments attached to the execution root active when each task was created.
 
 Two tests are run through separate zones at the same time. Each result should contain only the step and attachment produced inside that zone.
 ''');
-      final resultsDir = await step(
-        'Create isolated Allure results directory',
-        (_) => Directory.systemTemp.createTemp('allure_dart_reference_'),
-      );
-      addTearDown(() async {
-        if (resultsDir.existsSync()) {
-          await resultsDir.delete(recursive: true);
-        }
-      });
+        final resultsDir = await step(
+          'Create isolated Allure results directory',
+          (_) => Directory.systemTemp.createTemp('allure_dart_reference_'),
+        );
+        addTearDown(() async {
+          if (resultsDir.existsSync()) {
+            await resultsDir.delete(recursive: true);
+          }
+        });
 
-      late List<Map<String, dynamic>> results;
-      await step('Run concurrent lifecycle roots', (_) async {
-        final lifecycle = AllureLifecycle(
-          writer: AllureResultsWriter(outputDirectory: resultsDir.path),
-        );
-        final runtime = MessageTestRuntime(
-          sink: lifecycle,
-          contextResolver: getZoneExecutionContext,
-        );
-        final first = lifecycle.startTest(
-          name: 'first',
-          fullName: 'suite/concurrency#first',
-        );
-        final second = lifecycle.startTest(
-          name: 'second',
-          fullName: 'suite/concurrency#second',
-        );
-
-        Future<void> runRoot(String uuid, String name) {
-          return runWithAllureContext(
-            rootUuid: uuid,
-            testUuid: uuid,
-            body: () async {
-              await runtime.send(
-                RuntimeMessage(
-                  type: 'step_start',
-                  data: <String, Object?>{'name': '$name step'},
-                ),
-              );
-              await Future<void>.delayed(Duration.zero);
-              await runtime.send(
-                RuntimeMessage(
-                  type: 'attachment_content',
-                  data: <String, Object?>{
-                    'name': '$name attachment',
-                    'content': '$name payload',
-                    'encoding': 'utf8',
-                    'contentType': 'text/plain',
-                  },
-                ),
-              );
-              await runtime.send(
-                RuntimeMessage(
-                  type: 'step_stop',
-                  data: <String, Object?>{'status': 'passed'},
-                ),
-              );
-            },
+        late List<Map<String, dynamic>> results;
+        await step('Run concurrent lifecycle roots', (_) async {
+          final lifecycle = AllureLifecycle(
+            writer: AllureResultsWriter(outputDirectory: resultsDir.path),
           );
-        }
+          final runtime = MessageTestRuntime(
+            sink: lifecycle,
+            contextResolver: getZoneExecutionContext,
+          );
+          final first = lifecycle.startTest(
+            name: 'first',
+            fullName: 'suite/concurrency#first',
+          );
+          final second = lifecycle.startTest(
+            name: 'second',
+            fullName: 'suite/concurrency#second',
+          );
 
-        await Future.wait(<Future<void>>[
-          runRoot(first, 'first'),
-          runRoot(second, 'second'),
-        ]);
-        await lifecycle.stopTest(first, status: AllureStatus.passed);
-        await lifecycle.stopTest(second, status: AllureStatus.passed);
-        await lifecycle.writeTest(first);
-        await lifecycle.writeTest(second);
+          Future<void> runRoot(String uuid, String name) {
+            return runWithAllureContext(
+              rootUuid: uuid,
+              testUuid: uuid,
+              body: () async {
+                await runtime.send(
+                  RuntimeMessage(
+                    type: 'step_start',
+                    data: <String, Object?>{'name': '$name step'},
+                  ),
+                );
+                await Future<void>.delayed(Duration.zero);
+                await runtime.send(
+                  RuntimeMessage(
+                    type: 'attachment_content',
+                    data: <String, Object?>{
+                      'name': '$name attachment',
+                      'content': '$name payload',
+                      'encoding': 'utf8',
+                      'contentType': 'text/plain',
+                    },
+                  ),
+                );
+                await runtime.send(
+                  RuntimeMessage(
+                    type: 'step_stop',
+                    data: <String, Object?>{'status': 'passed'},
+                  ),
+                );
+              },
+            );
+          }
 
-        results = resultsDir
-            .listSync()
-            .whereType<File>()
-            .where((file) => file.path.endsWith('-result.json'))
-            .map((file) =>
-                jsonDecode(file.readAsStringSync()) as Map<String, dynamic>)
-            .toList()
-          ..sort(
-              (a, b) => (a['name'] as String).compareTo(b['name'] as String));
-        await _attachDirectoryFiles(resultsDir);
-      });
+          await Future.wait(<Future<void>>[
+            runRoot(first, 'first'),
+            runRoot(second, 'second'),
+          ]);
+          await lifecycle.stopTest(first, status: AllureStatus.passed);
+          await lifecycle.stopTest(second, status: AllureStatus.passed);
+          await lifecycle.writeTest(first);
+          await lifecycle.writeTest(second);
 
-      await step('Verify roots kept separate evidence', (_) async {
-        await _verifyValue(
-          'Verify two concurrent roots were written',
-          expected: 2,
-          actual: results.length,
-        );
-        for (final result in results) {
-          final name = result['name'] as String;
-          final steps = result['steps'] as List<dynamic>;
+          results =
+              resultsDir
+                  .listSync()
+                  .whereType<File>()
+                  .where((file) => file.path.endsWith('-result.json'))
+                  .map(
+                    (file) =>
+                        jsonDecode(file.readAsStringSync())
+                            as Map<String, dynamic>,
+                  )
+                  .toList()
+                ..sort(
+                  (a, b) =>
+                      (a['name'] as String).compareTo(b['name'] as String),
+                );
+          await _attachDirectoryFiles(resultsDir);
+        });
+
+        await step('Verify roots kept separate evidence', (_) async {
           await _verifyValue(
-            'Verify $name root has one step',
-            expected: 1,
-            actual: steps.length,
+            'Verify two concurrent roots were written',
+            expected: 2,
+            actual: results.length,
           );
-          final step = steps.single as Map<String, dynamic>;
-          await _verifyValue(
-            'Verify $name root step name',
-            expected: '$name step',
-            actual: step['name'],
-          );
-          final attachments = step['attachments'] as List<dynamic>;
-          await _verifyValue(
-            'Verify $name root has one step attachment',
-            expected: 1,
-            actual: attachments.length,
-          );
-          await _verifyValue(
-            'Verify $name root attachment name',
-            expected: '$name attachment',
-            actual: (attachments.single as Map<String, dynamic>)['name'],
-          );
-        }
-      });
-    });
+          for (final result in results) {
+            final name = result['name'] as String;
+            final steps = result['steps'] as List<dynamic>;
+            await _verifyValue(
+              'Verify $name root has one step',
+              expected: 1,
+              actual: steps.length,
+            );
+            final step = steps.single as Map<String, dynamic>;
+            await _verifyValue(
+              'Verify $name root step name',
+              expected: '$name step',
+              actual: step['name'],
+            );
+            final attachments = step['attachments'] as List<dynamic>;
+            await _verifyValue(
+              'Verify $name root has one step attachment',
+              expected: 1,
+              actual: attachments.length,
+            );
+            await _verifyValue(
+              'Verify $name root attachment name',
+              expected: '$name attachment',
+              actual: (attachments.single as Map<String, dynamic>)['name'],
+            );
+          }
+        });
+      },
+    );
   });
 }
 
 Future<void> _attachDirectoryFiles(Directory directory) async {
-  for (final file in directory.listSync().whereType<File>().toList()
-    ..sort((left, right) => left.path.compareTo(right.path))) {
+  for (final file
+      in directory.listSync().whereType<File>().toList()
+        ..sort((left, right) => left.path.compareTo(right.path))) {
     await attachment(
       p.relative(file.path, from: directory.path),
       file.readAsBytesSync(),

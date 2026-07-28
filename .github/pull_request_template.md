@@ -20,6 +20,7 @@ Describe the problem or feature in addition to a link to the issues.
 #### Checklist
 
 - [ ] [Sign Allure CLA][cla]
+- [ ] Apply exactly one `pr:` release-notes label (see [CONTRIBUTING.md](../CONTRIBUTING.md))
 - [ ] Provide unit tests
 
 [cla]: https://cla-assistant.io/accept/allure-framework/allure-dart

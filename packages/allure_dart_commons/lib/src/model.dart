@@ -69,18 +69,16 @@ class AllureLabel {
   final String value;
 
   /// Converts this label to the Allure JSON representation.
-  Map<String, String> toJson() =>
-      <String, String>{'name': name, 'value': value};
+  Map<String, String> toJson() => <String, String>{
+    'name': name,
+    'value': value,
+  };
 }
 
 /// Link metadata attached to an Allure result.
 class AllureLink {
   /// Creates an Allure link.
-  const AllureLink({
-    required this.url,
-    this.name,
-    this.type,
-  });
+  const AllureLink({required this.url, this.name, this.type});
 
   /// Link URL or template value.
   final String url;
@@ -93,11 +91,7 @@ class AllureLink {
 
   /// Converts this link to the Allure JSON representation.
   Map<String, String> toJson() {
-    return _compactMap<String>({
-      'url': url,
-      'name': name,
-      'type': type,
-    });
+    return _compactMap<String>({'url': url, 'name': name, 'type': type});
   }
 }
 
@@ -253,9 +247,9 @@ abstract class AllureExecutable {
     List<AllureParameter>? parameters,
     this.start,
     this.stop,
-  })  : steps = steps ?? <AllureStepResult>[],
-        attachments = attachments ?? <AllureAttachment>[],
-        parameters = parameters ?? <AllureParameter>[];
+  }) : steps = steps ?? <AllureStepResult>[],
+       attachments = attachments ?? <AllureAttachment>[],
+       parameters = parameters ?? <AllureParameter>[];
 
   /// Display name of the executable item.
   String? name;
@@ -300,8 +294,9 @@ abstract class AllureExecutable {
       'description': description,
       'descriptionHtml': descriptionHtml,
       'steps': steps.map((step) => step.toJson()).toList(),
-      'attachments':
-          attachments.map((attachment) => attachment.toJson()).toList(),
+      'attachments': attachments
+          .map((attachment) => attachment.toJson())
+          .toList(),
       'parameters': parameters.map((parameter) => parameter.toJson()).toList(),
       'start': start,
       'stop': stop,
@@ -332,10 +327,7 @@ class AllureStepResult extends AllureExecutable {
 
   /// Converts this step to the Allure JSON representation.
   Map<String, Object?> toJson() {
-    return _compactMap<Object?>({
-      'uuid': uuid,
-      ...executableToJson(),
-    });
+    return _compactMap<Object?>({'uuid': uuid, ...executableToJson()});
   }
 }
 
@@ -383,8 +375,8 @@ class AllureTestResult extends AllureExecutable {
     super.parameters,
     super.start,
     super.stop,
-  })  : labels = labels ?? <AllureLabel>[],
-        links = links ?? <AllureLink>[];
+  }) : labels = labels ?? <AllureLabel>[],
+       links = links ?? <AllureLink>[];
 
   /// Unique identifier of the test result.
   final String uuid;
@@ -443,10 +435,10 @@ class AllureTestResultContainer {
     List<AllureLink>? links,
     this.start,
     this.stop,
-  })  : children = children ?? <String>[],
-        befores = befores ?? <AllureFixtureResult>[],
-        afters = afters ?? <AllureFixtureResult>[],
-        links = links ?? <AllureLink>[];
+  }) : children = children ?? <String>[],
+       befores = befores ?? <AllureFixtureResult>[],
+       afters = afters ?? <AllureFixtureResult>[],
+       links = links ?? <AllureLink>[];
 
   /// Unique identifier of the container.
   final String uuid;
@@ -512,10 +504,7 @@ class AllureGlobalAttachment extends AllureAttachment {
   /// Converts this global attachment to the Allure JSON representation.
   @override
   Map<String, Object?> toJson() {
-    return _compactMap<Object?>({
-      ...super.toJson(),
-      'timestamp': timestamp,
-    });
+    return _compactMap<Object?>({...super.toJson(), 'timestamp': timestamp});
   }
 }
 
@@ -539,10 +528,7 @@ class AllureGlobalError extends AllureStatusDetails {
   /// Converts this global error to the Allure JSON representation.
   @override
   Map<String, Object?> toJson() {
-    return _compactMap<Object?>({
-      ...super.toJson(),
-      'timestamp': timestamp,
-    });
+    return _compactMap<Object?>({...super.toJson(), 'timestamp': timestamp});
   }
 }
 
@@ -552,8 +538,8 @@ class AllureGlobals {
   const AllureGlobals({
     List<AllureGlobalAttachment>? attachments,
     List<AllureGlobalError>? errors,
-  })  : attachments = attachments ?? const <AllureGlobalAttachment>[],
-        errors = errors ?? const <AllureGlobalError>[];
+  }) : attachments = attachments ?? const <AllureGlobalAttachment>[],
+       errors = errors ?? const <AllureGlobalError>[];
 
   /// Global attachments to write.
   final List<AllureGlobalAttachment> attachments;
@@ -564,8 +550,9 @@ class AllureGlobals {
   /// Converts this global data to the Allure JSON representation.
   Map<String, Object?> toJson() {
     return <String, Object?>{
-      'attachments':
-          attachments.map((attachment) => attachment.toJson()).toList(),
+      'attachments': attachments
+          .map((attachment) => attachment.toJson())
+          .toList(),
       'errors': errors.map((error) => error.toJson()).toList(),
     };
   }
@@ -623,8 +610,9 @@ class AllureCategory {
       'descriptionHtml': descriptionHtml,
       'messageRegex': serializeRegex(messageRegex),
       'traceRegex': serializeRegex(traceRegex),
-      'matchedStatuses':
-          matchedStatuses?.map((status) => status.value).toList(),
+      'matchedStatuses': matchedStatuses
+          ?.map((status) => status.value)
+          .toList(),
       'flaky': flaky,
     });
   }

@@ -18,17 +18,15 @@ void main() {
     expect(resultFiles, isNotEmpty);
 
     final results = resultFiles
-        .map((file) =>
-            jsonDecode(file.readAsStringSync()) as Map<String, dynamic>)
+        .map(
+          (file) => jsonDecode(file.readAsStringSync()) as Map<String, dynamic>,
+        )
         .toList();
     final integrationResults = results
         .where((result) => result['name'] == 'labels integration binding tests')
         .toList();
 
-    expect(
-      integrationResults,
-      isNotEmpty,
-    );
+    expect(integrationResults, isNotEmpty);
     expect(
       integrationResults.every(
         (result) => _hasLabel(
@@ -59,8 +57,9 @@ void main() {
     expect(
       integrationResults.every(
         (result) =>
-            (result['fullName'] as String?)
-                ?.contains('integration_binding_smoke_test.dart') ??
+            (result['fullName'] as String?)?.contains(
+              'integration_binding_smoke_test.dart',
+            ) ??
             false,
       ),
       isTrue,
@@ -68,8 +67,9 @@ void main() {
     expect(
       integrationResults.any(
         (result) =>
-            (result['fullName'] as String?)
-                ?.contains('integration_test.dart') ??
+            (result['fullName'] as String?)?.contains(
+              'integration_test.dart',
+            ) ??
             false,
       ),
       isFalse,
@@ -89,8 +89,12 @@ void main() {
         (result) => (result['labels'] as List<dynamic>).any(
           (label) =>
               label is Map &&
-              <Object?>['suite', 'parentSuite', 'subSuite', 'package']
-                  .contains(label['name']?.toString()) &&
+              <Object?>[
+                'suite',
+                'parentSuite',
+                'subSuite',
+                'package',
+              ].contains(label['name']?.toString()) &&
               (label['value']?.toString().contains('integration_test.dart') ??
                   false),
         ),

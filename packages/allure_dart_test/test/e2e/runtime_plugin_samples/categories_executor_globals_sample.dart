@@ -28,9 +28,6 @@ void main() {
       contentType: 'text/plain',
       fileExtension: 'txt',
     );
-    await allure.globalError(
-      message: 'global error message',
-      known: true,
-    );
+    await allure.globalError(message: 'global error message', known: true);
   });
 }

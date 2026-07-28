@@ -17,9 +17,52 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
+  quality:
+    name: Format and analyze
+    runs-on: ubuntu-latest
+    env:
+      DART_SUPPRESS_ANALYTICS: 'true'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7.0.1
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Install workspace dependencies
+        run: dart pub get
+
+      - name: Use workspace packages for Flutter adapter
+        run: bash scripts/setup-flutter-workspace.sh
+
+      - name: Install Flutter adapter dependencies
+        working-directory: packages/allure_flutter_test
+        run: flutter pub get
+
+      - name: Check formatting
+        run: >
+          dart format --output=none --set-exit-if-changed
+          packages/allure_dart_commons/lib
+          packages/allure_dart_commons/test
+          packages/allure_dart_test/lib
+          packages/allure_dart_test/test
+          packages/allure_flutter_test/lib
+          packages/allure_flutter_test/test
+          scripts
+
+      - name: Analyze Dart workspace
+        run: dart analyze
+
+      - name: Analyze Flutter adapter
+        working-directory: packages/allure_flutter_test
+        run: flutter analyze --no-fatal-infos
+
   build:
     name: Build (${{ matrix.name }})
     runs-on: ${{ matrix.os }}
+    needs: [quality]
     strategy:
       fail-fast: false
       matrix:

@@ -172,10 +172,12 @@ List<AllureLabel> getSuiteLabels(List<String> suites) {
 /// Adds default suite labels to [test] when none are already present.
 void ensureSuiteLabels(AllureTestResult test, List<String> defaultSuites) {
   final existingSuiteLabels = test.labels
-      .where((label) =>
-          label.name == 'parentSuite' ||
-          label.name == 'suite' ||
-          label.name == 'subSuite')
+      .where(
+        (label) =>
+            label.name == 'parentSuite' ||
+            label.name == 'suite' ||
+            label.name == 'subSuite',
+      )
       .toList();
   if (existingSuiteLabels.isNotEmpty) {
     return;
@@ -314,9 +316,11 @@ AllureLink formatLink(
   }
 
   final url = urlTemplates[link.type!];
-  final formattedUrl =
-      url == null ? link.url : applyLinkTemplate(url, link.url);
-  final formattedName = link.name ??
+  final formattedUrl = url == null
+      ? link.url
+      : applyLinkTemplate(url, link.url);
+  final formattedName =
+      link.name ??
       (nameTemplates[link.type!] == null
           ? null
           : applyLinkTemplate(nameTemplates[link.type!]!, link.url));
@@ -384,8 +388,9 @@ String stringifyEnvironmentInfo(AllureEnvironmentInfo info) {
     if (value == null) {
       continue;
     }
-    buffer
-        .writeln('${_escapeProperties(entry.key)}=${_escapeProperties(value)}');
+    buffer.writeln(
+      '${_escapeProperties(entry.key)}=${_escapeProperties(value)}',
+    );
   }
   return buffer.toString();
 }

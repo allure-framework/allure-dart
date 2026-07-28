@@ -4,9 +4,7 @@ import 'package:test/test.dart';
 void main() {
   installAllure(
     lifecycle: AllureLifecycle(
-      listeners: const <AllureLifecycleListener>[
-        _ListenerMetadata(),
-      ],
+      listeners: const <AllureLifecycleListener>[_ListenerMetadata()],
     ),
   );
 

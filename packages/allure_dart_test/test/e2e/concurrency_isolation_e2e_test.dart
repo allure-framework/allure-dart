@@ -17,45 +17,48 @@ void main() {
 
   group('allure concurrency isolation e2e results', () {
     test(
-        'keeps per-suite labels, steps, and attachments isolated under concurrent suites',
-        () async {
-      final run = await _runConcurrentRuntimeSamples();
+      'keeps per-suite labels, steps, and attachments isolated under concurrent suites',
+      () async {
+        final run = await _runConcurrentRuntimeSamples();
 
-      await harnessStep(
+        await harnessStep(
           'Verify concurrently executed suites do not leak labels, steps, or attachments',
           () {
-        expect(run.exitCode, 0, reason: run.output);
-        expect(run.resultFiles, hasLength(2));
+            expect(run.exitCode, 0, reason: run.output);
+            expect(run.resultFiles, hasLength(2));
 
-        final alpha = run.results.singleWhere(
-          (result) => result['name'] == 'concurrency isolation sample alpha',
+            final alpha = run.results.singleWhere(
+              (result) =>
+                  result['name'] == 'concurrency isolation sample alpha',
+            );
+            final beta = run.results.singleWhere(
+              (result) => result['name'] == 'concurrency isolation sample beta',
+            );
+
+            _expectOwnLabelOnly(alpha, own: 'alpha', other: 'beta');
+            _expectOwnLabelOnly(beta, own: 'beta', other: 'alpha');
+
+            final alphaStep = _singleStep(alpha, expectedName: 'alpha step');
+            final betaStep = _singleStep(beta, expectedName: 'beta step');
+
+            final alphaAttachment = _singleAttachment(alphaStep);
+            final betaAttachment = _singleAttachment(betaStep);
+            expect(alphaAttachment['name'], 'alpha payload');
+            expect(betaAttachment['name'], 'beta payload');
+
+            final alphaContent = File(
+              p.join(run.resultsDir.path, alphaAttachment['source'] as String),
+            ).readAsStringSync();
+            final betaContent = File(
+              p.join(run.resultsDir.path, betaAttachment['source'] as String),
+            ).readAsStringSync();
+
+            expect(alphaContent, 'alpha-only-content');
+            expect(betaContent, 'beta-only-content');
+          },
         );
-        final beta = run.results.singleWhere(
-          (result) => result['name'] == 'concurrency isolation sample beta',
-        );
-
-        _expectOwnLabelOnly(alpha, own: 'alpha', other: 'beta');
-        _expectOwnLabelOnly(beta, own: 'beta', other: 'alpha');
-
-        final alphaStep = _singleStep(alpha, expectedName: 'alpha step');
-        final betaStep = _singleStep(beta, expectedName: 'beta step');
-
-        final alphaAttachment = _singleAttachment(alphaStep);
-        final betaAttachment = _singleAttachment(betaStep);
-        expect(alphaAttachment['name'], 'alpha payload');
-        expect(betaAttachment['name'], 'beta payload');
-
-        final alphaContent = File(
-          p.join(run.resultsDir.path, alphaAttachment['source'] as String),
-        ).readAsStringSync();
-        final betaContent = File(
-          p.join(run.resultsDir.path, betaAttachment['source'] as String),
-        ).readAsStringSync();
-
-        expect(alphaContent, 'alpha-only-content');
-        expect(betaContent, 'beta-only-content');
-      });
-    });
+      },
+    );
   });
 }
 
@@ -64,8 +67,8 @@ void _expectOwnLabelOnly(
   required String own,
   required String other,
 }) {
-  final labels =
-      (result['labels'] as List<dynamic>).cast<Map<String, dynamic>>();
+  final labels = (result['labels'] as List<dynamic>)
+      .cast<Map<String, dynamic>>();
   final sampleLabelValues = labels
       .where((label) => label['name'] == 'sample')
       .map((label) => label['value'])
@@ -87,8 +90,8 @@ Map<String, dynamic> _singleStep(
 }
 
 Map<String, dynamic> _singleAttachment(Map<String, dynamic> step) {
-  final attachmentSteps =
-      (step['steps'] as List<dynamic>).cast<Map<String, dynamic>>();
+  final attachmentSteps = (step['steps'] as List<dynamic>)
+      .cast<Map<String, dynamic>>();
   expect(attachmentSteps, hasLength(1));
   final attachments = (attachmentSteps.single['attachments'] as List<dynamic>)
       .cast<Map<String, dynamic>>();
@@ -114,15 +117,18 @@ class _RunSampleResult {
 
 Future<_RunSampleResult> _runConcurrentRuntimeSamples() async {
   final repoRoot = Directory.current;
-  final commonsRoot =
-      p.normalize(p.join(repoRoot.path, '..', 'allure_dart_commons'));
+  final commonsRoot = p.normalize(
+    p.join(repoRoot.path, '..', 'allure_dart_commons'),
+  );
   const pubEnvironment = <String, String>{
     'HOME': '/tmp/codex-home',
     'DART_SUPPRESS_ANALYTICS': 'true',
   };
-  final samplesDir =
-      Directory(p.join(repoRoot.path, 'test', 'e2e', 'concurrency_samples'));
-  final pubspecContents = '''
+  final samplesDir = Directory(
+    p.join(repoRoot.path, 'test', 'e2e', 'concurrency_samples'),
+  );
+  final pubspecContents =
+      '''
 name: allure_dart_concurrency_e2e_fixture
 publish_to: none
 
@@ -145,8 +151,9 @@ dev_dependencies:
     tempPrefix: 'allure_dart_concurrency_e2e_',
     sampleSource: File(p.join(samplesDir.path, 'alpha_sample.dart')),
     additionalSampleSources: <String, File>{
-      'beta_concurrency_test.dart':
-          File(p.join(samplesDir.path, 'beta_sample.dart')),
+      'beta_concurrency_test.dart': File(
+        p.join(samplesDir.path, 'beta_sample.dart'),
+      ),
     },
     pubspecContents: pubspecContents,
   );
@@ -169,12 +176,7 @@ dev_dependencies:
 
   final testRun = await runProcessStep(
     executable: 'dart',
-    arguments: const [
-      'test',
-      '--reporter',
-      'expanded',
-      '--concurrency=4',
-    ],
+    arguments: const ['test', '--reporter', 'expanded', '--concurrency=4'],
     workingDirectory: project.tempDir,
     environment: <String, String>{
       ...pubEnvironment,
@@ -193,8 +195,9 @@ dev_dependencies:
       resultFiles
         ..clear()
         ..addAll(
-          listProducedFiles(project.resultsDir)
-              .where((file) => file.path.endsWith('-result.json')),
+          listProducedFiles(
+            project.resultsDir,
+          ).where((file) => file.path.endsWith('-result.json')),
         )
         ..sort((a, b) => a.path.compareTo(b.path));
       results

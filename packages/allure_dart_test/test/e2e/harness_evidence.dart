@@ -28,10 +28,7 @@ class PreparedTestProject {
   final File? testPlanFile;
 }
 
-Future<T> harnessStep<T>(
-  String name,
-  FutureOr<T> Function() body,
-) {
+Future<T> harnessStep<T>(String name, FutureOr<T> Function() body) {
   return allure.step(name, (_) => body());
 }
 
@@ -76,8 +73,9 @@ Future<PreparedTestProject> prepareTestProject({
 }) {
   return allure.step('Prepare test project', (step) async {
     final tempDir = await Directory.systemTemp.createTemp(tempPrefix);
-    final resultsDir =
-        Directory(p.join(tempDir.path, resultsDirectoryRelativePath));
+    final resultsDir = Directory(
+      p.join(tempDir.path, resultsDirectoryRelativePath),
+    );
     final testDir = Directory(p.join(tempDir.path, 'test'));
     await testDir.create(recursive: true);
 

@@ -8,9 +8,7 @@ void main() {
       AllureLabel(name: 'framework', value: 'dart-test'),
       AllureLabel(name: 'language', value: 'dart'),
     ],
-    parameters: const [
-      AllureParameter(name: 'browser', value: 'chromium'),
-    ],
+    parameters: const [AllureParameter(name: 'browser', value: 'chromium')],
     links: const [
       AllureLink(
         name: 'docs',

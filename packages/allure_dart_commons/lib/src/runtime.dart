@@ -78,8 +78,8 @@ class MessageTestRuntime implements TestRuntime {
   MessageTestRuntime({
     required AllureRuntimeMessageSink sink,
     required AllureExecutionContextResolver contextResolver,
-  })  : _sink = sink,
-        _contextResolver = contextResolver;
+  }) : _sink = sink,
+       _contextResolver = contextResolver;
 
   final AllureRuntimeMessageSink _sink;
   final AllureExecutionContextResolver _contextResolver;
@@ -91,10 +91,7 @@ class MessageTestRuntime implements TestRuntime {
     if (!message.isGlobal && context == null) {
       return Future<void>.value();
     }
-    return _sink.handleRuntimeMessage(
-      message,
-      rootUuid: context?.rootUuid,
-    );
+    return _sink.handleRuntimeMessage(message, rootUuid: context?.rootUuid);
   }
 }
 
@@ -151,11 +148,7 @@ Future<void> labels(Iterable<AllureLabel> values) {
 }
 
 /// Adds an Allure link to the current test.
-Future<void> link(
-  String url, {
-  String? name,
-  String? type,
-}) {
+Future<void> link(String url, {String? name, String? type}) {
   return links(<AllureLink>[AllureLink(url: url, name: name, type: type)]);
 }
 
@@ -444,8 +437,9 @@ Future<void> logStep(
       data: <String, Object?>{
         'status': status.value,
         'stop': timestamp,
-        'statusDetails':
-            error == null ? null : getMessageAndTraceFromError(error).toJson(),
+        'statusDetails': error == null
+            ? null
+            : getMessageAndTraceFromError(error).toJson(),
       },
     ),
   );
@@ -482,8 +476,10 @@ Future<T> step<T>(
         data: <String, Object?>{
           'status': getStatusFromError(error, stackTrace).value,
           'stop': currentTimestamp(),
-          'statusDetails':
-              getMessageAndTraceFromError(error, stackTrace).toJson(),
+          'statusDetails': getMessageAndTraceFromError(
+            error,
+            stackTrace,
+          ).toJson(),
         },
       ),
     );
@@ -577,22 +573,13 @@ Future<void> tags(Iterable<String> values) {
 
 ({String encoding, String content}) _encodeAttachmentContent(Object value) {
   if (value is List<int>) {
-    return (
-      encoding: 'base64',
-      content: base64.encode(value),
-    );
+    return (encoding: 'base64', content: base64.encode(value));
   }
   if (value is Uint8List) {
-    return (
-      encoding: 'base64',
-      content: base64.encode(value),
-    );
+    return (encoding: 'base64', content: base64.encode(value));
   }
   if (value is String) {
     return (encoding: 'utf8', content: value);
   }
-  return (
-    encoding: 'utf8',
-    content: serializeValue(value),
-  );
+  return (encoding: 'utf8', content: serializeValue(value));
 }

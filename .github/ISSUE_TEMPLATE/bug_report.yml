@@ -36,7 +36,7 @@ body:
     id: dart-version
     attributes:
       label: Dart version
-      placeholder: Dart SDK version 3.6.0
+      placeholder: Dart SDK version 3.8.0
     validations:
       required: true
   - type: input

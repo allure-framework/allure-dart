@@ -16,11 +16,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   installAllure();
 
-  testWidgets(
-    'declaration skip with installAllure only',
-    (tester) async {
-      fail('no');
-    },
-    skip: true,
-  );
+  testWidgets('declaration skip with installAllure only', (tester) async {
+    fail('no');
+  }, skip: true);
 }

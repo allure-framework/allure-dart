@@ -1,5 +1,7 @@
 # allure_flutter_test
 
+[![pub package](https://img.shields.io/pub/v/allure_flutter_test.svg)](https://pub.dev/packages/allure_flutter_test)
+
 `allure_flutter_test` adds Allure reporting for `flutter_test` and host-run
 `integration_test` suites.
 
@@ -9,7 +11,7 @@ Add the package to your `pubspec.yaml`:
 
 ```yaml
 dev_dependencies:
-  allure_flutter_test: ^1.0.0
+  allure_flutter_test: ^1.1.0
 ```
 
 For widget tests, replace the normal `flutter_test` import with the Allure
