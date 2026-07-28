@@ -18,10 +18,10 @@ dependencies:
     sdk: flutter
   integration_test:
     sdk: flutter
-  # Version is pinned by the Flutter SDK's own flutter_test dependency, so
-  # use `any` rather than a manually tracked constraint.
-  leak_tracker_flutter_testing: any
-  test_api: any
+  # Declared for pub.dev (unconstrained `any` is rejected). Keep these wide so
+  # Flutter SDK's own flutter_test pins can select the matching versions.
+  leak_tracker_flutter_testing: ^3.0.0
+  test_api: ^0.7.0
 
 dev_dependencies:
   lints: ^6.1.0

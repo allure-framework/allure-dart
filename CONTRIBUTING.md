@@ -56,6 +56,15 @@ dart analyze
 
 and, when Flutter is available, analyzes `allure_flutter_test`.
 
+Before a release, also validate pub.dev packaging:
+
+```bash
+bash scripts/publish-dry-run.sh
+```
+
+CI runs that dry-run on every pull request so unconstrained dependencies and
+similar publish blockers fail before tagging.
+
 ## Running Tests
 
 The default contributor path is the normal Dart and Flutter test runners.

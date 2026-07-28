@@ -7,3 +7,4 @@ pubspec_overrides.yaml
 build/
 allure-results/
 allure-report/
+flutter_package_*/

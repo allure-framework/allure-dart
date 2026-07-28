@@ -52,6 +52,9 @@ jobs:
         working-directory: packages/allure_flutter_test
         run: flutter test test
 
+      - name: Publish dry-run
+        run: bash scripts/publish-dry-run.sh
+
   publish-commons:
     name: Publish allure_dart_commons
     if: startsWith(github.ref_name, 'allure_dart_commons-v')
