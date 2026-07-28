@@ -55,7 +55,8 @@ PreparedPackageTestDeclaration preparePackageTestDeclaration({
   Iterable<AllureParameter> additionalParameters = const <AllureParameter>[],
 }) {
   final registry = PackageTestScopeRegistry.instance;
-  final resolvedPackagePath = packagePath ??
+  final resolvedPackagePath =
+      packagePath ??
       resolvePackageTestPathFromDeclaration(
         locationUri: locationUri,
         stackTrace: stackTrace,
@@ -76,7 +77,8 @@ PreparedPackageTestDeclaration preparePackageTestDeclaration({
   registry.registerMetadata(declaredMetadata);
 
   final testPlan = parseTestPlan();
-  final excludedByTestPlan = testPlan != null &&
+  final excludedByTestPlan =
+      testPlan != null &&
       !includedInTestPlan(
         testPlan,
         id: declaredMetadata.externalId,

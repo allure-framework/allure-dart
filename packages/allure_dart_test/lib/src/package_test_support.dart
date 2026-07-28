@@ -108,8 +108,9 @@ PackageTestMetadata buildPackageTestMetadata({
 
   final resolvedName = titleMetadata.displayName ?? titleMetadata.cleanName;
   final resolvedTestCaseName = testCaseName ?? titleMetadata.cleanName;
-  final normalizedPackagePath =
-      packagePath == null ? null : getPosixPath(packagePath);
+  final normalizedPackagePath = packagePath == null
+      ? null
+      : getPosixPath(packagePath);
   final titlePath = <String>[
     if (normalizedPackagePath != null)
       ..._splitPosixPath(normalizedPackagePath),
@@ -168,10 +169,7 @@ PackageTestMetadata mergePackageTestMetadata(
       ...declarationMetadata.labels,
       ...runtimeMetadata.labels,
     ],
-    links: <AllureLink>[
-      ...declarationMetadata.links,
-      ...runtimeMetadata.links,
-    ],
+    links: <AllureLink>[...declarationMetadata.links, ...runtimeMetadata.links],
     parameters: <AllureParameter>[
       ...declarationMetadata.parameters,
       ...runtimeMetadata.parameters,
@@ -377,10 +375,12 @@ class ExtractedMetadata {
 }
 
 final _allureIdAnnotationPattern = RegExp(r'@allure\.id[:=]([^\s]+)');
-final _allureLabelAnnotationPattern =
-    RegExp(r'@allure\.label\.([^:=\s]+)[:=]([^\s]+)');
-final _allureLinkAnnotationPattern =
-    RegExp(r'@allure\.link\.([^:=\s]+)[:=]([^\s]+)');
+final _allureLabelAnnotationPattern = RegExp(
+  r'@allure\.label\.([^:=\s]+)[:=]([^\s]+)',
+);
+final _allureLinkAnnotationPattern = RegExp(
+  r'@allure\.link\.([^:=\s]+)[:=]([^\s]+)',
+);
 final _allureNameAnnotationPattern = RegExp(r'@allure\.name[:=]([^\s].*?)$');
 
 /// Extracts Allure metadata annotations from [text].

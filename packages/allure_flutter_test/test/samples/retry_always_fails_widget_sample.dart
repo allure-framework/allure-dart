@@ -9,11 +9,7 @@
 import 'package:allure_flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets(
-    'retry widget sample always fails',
-    (tester) async {
-      expect(1, equals(2));
-    },
-    retry: 1,
-  );
+  testWidgets('retry widget sample always fails', (tester) async {
+    expect(1, equals(2));
+  }, retry: 1);
 }

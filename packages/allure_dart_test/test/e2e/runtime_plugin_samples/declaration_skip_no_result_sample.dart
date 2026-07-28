@@ -12,11 +12,7 @@ import 'package:test/test.dart';
 void main() {
   installAllure();
 
-  test(
-    'declaration skip with installAllure only',
-    () {
-      fail('no');
-    },
-    skip: true,
-  );
+  test('declaration skip with installAllure only', () {
+    fail('no');
+  }, skip: true);
 }

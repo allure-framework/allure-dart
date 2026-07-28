@@ -32,31 +32,38 @@ void main() {
       });
     });
 
-    test('writes failed result details for plain package:test failure',
-        () async {
-      final run = await _runRuntimeSample(sampleName: 'failure_sample.dart');
+    test(
+      'writes failed result details for plain package:test failure',
+      () async {
+        final run = await _runRuntimeSample(sampleName: 'failure_sample.dart');
 
-      await harnessStep('Verify installAllure assertion failure details', () {
-        expect(run.exitCode, isNonZero,
-            reason: 'sample must fail\n${run.output}');
-        expect(run.resultFiles, hasLength(1));
+        await harnessStep('Verify installAllure assertion failure details', () {
+          expect(
+            run.exitCode,
+            isNonZero,
+            reason: 'sample must fail\n${run.output}',
+          );
+          expect(run.resultFiles, hasLength(1));
 
-        final result = run.results.single;
-        _expectRuntimeBaseResultFields(
-          result,
-          expectedName: 'runtime plugin failure sample',
-        );
-        expect(result['status'], 'failed');
-        expect(
+          final result = run.results.single;
+          _expectRuntimeBaseResultFields(
+            result,
+            expectedName: 'runtime plugin failure sample',
+          );
+          expect(result['status'], 'failed');
+          expect(
             (result['statusDetails'] as Map<String, dynamic>)['message']
                 as String,
-            contains('Expected: <2>'));
-        expect(
+            contains('Expected: <2>'),
+          );
+          expect(
             (result['statusDetails'] as Map<String, dynamic>)['trace']
                 as String,
-            contains('sample_test.dart'));
-      });
-    });
+            contains('sample_test.dart'),
+          );
+        });
+      },
+    );
 
     test('writes skipped result when test is skipped', () async {
       final run = await _runRuntimeSample(sampleName: 'skipped_sample.dart');
@@ -76,113 +83,122 @@ void main() {
     });
 
     test(
-        'writes no Allure result for a declaration-skipped test with plain installAllure()',
-        () async {
+      'writes no Allure result for a declaration-skipped test with plain installAllure()',
+      () async {
+        final run = await _runRuntimeSample(
+          sampleName: 'declaration_skip_no_result_sample.dart',
+        );
+
+        await harnessStep(
+          'Verify installAllure + original imports + declaration skip writes zero results',
+          () {
+            expect(run.exitCode, 0, reason: run.output);
+            expect(run.resultFiles, isEmpty);
+          },
+        );
+      },
+    );
+
+    test('supports nested groups and hooks with installAllure()', () async {
       final run = await _runRuntimeSample(
-        sampleName: 'declaration_skip_no_result_sample.dart',
+        sampleName: 'group_hooks_sample.dart',
       );
 
       await harnessStep(
-          'Verify installAllure + original imports + declaration skip writes zero results',
-          () {
-        expect(run.exitCode, 0, reason: run.output);
-        expect(run.resultFiles, isEmpty);
-      });
+        'Verify installAllure nested group title path and passed status',
+        () {
+          expect(run.exitCode, 0, reason: run.output);
+          expect(run.resultFiles, hasLength(1));
+
+          final result = run.results.single;
+          _expectRuntimeBaseResultFields(
+            result,
+            expectedName: 'nested test uses hooks',
+            expectedTitlePath: const [
+              'test',
+              'sample_test.dart',
+              'parent group',
+            ],
+          );
+          expect(result['status'], 'passed');
+        },
+      );
     });
 
-    test('supports nested groups and hooks with installAllure()', () async {
-      final run =
-          await _runRuntimeSample(sampleName: 'group_hooks_sample.dart');
-
-      await harnessStep(
-          'Verify installAllure nested group title path and passed status', () {
-        expect(run.exitCode, 0, reason: run.output);
-        expect(run.resultFiles, hasLength(1));
-
-        final result = run.results.single;
-        _expectRuntimeBaseResultFields(
-          result,
-          expectedName: 'nested test uses hooks',
-          expectedTitlePath: const [
-            'test',
-            'sample_test.dart',
-            'parent group',
-          ],
+    test(
+      'supports package-root runtime facade calls with installAllure()',
+      () async {
+        final run = await _runRuntimeSample(
+          sampleName: 'runtime_api_sample.dart',
         );
-        expect(result['status'], 'passed');
-      });
-    });
 
-    test('supports package-root runtime facade calls with installAllure()',
-        () async {
-      final run =
-          await _runRuntimeSample(sampleName: 'runtime_api_sample.dart');
-
-      await harnessStep(
+        await harnessStep(
           'Verify runtime facade labels, parameters, links, steps, and attachments',
           () {
-        expect(run.exitCode, 0, reason: run.output);
-        expect(run.resultFiles, hasLength(1));
+            expect(run.exitCode, 0, reason: run.output);
+            expect(run.resultFiles, hasLength(1));
 
-        final result = run.results.single;
-        _expectRuntimeBaseResultFields(
-          result,
-          expectedName: 'runtime api sample',
-        );
-        expect(
-          result['labels'],
-          containsAll(<Map<String, String>>[
-            {'name': 'owner', 'value': 'alice'},
-          ]),
-        );
-        expect(
-          result['parameters'],
-          containsAll(<Map<String, String>>[
-            {'name': 'browser', 'value': 'chromium'},
-          ]),
-        );
-        expect(
-          result['links'],
-          containsAll(<Map<String, String>>[
-            {
-              'name': 'bug',
-              'type': 'issue',
-              'url': 'https://example.test/BUG-1',
-            },
-          ]),
-        );
+            final result = run.results.single;
+            _expectRuntimeBaseResultFields(
+              result,
+              expectedName: 'runtime api sample',
+            );
+            expect(
+              result['labels'],
+              containsAll(<Map<String, String>>[
+                {'name': 'owner', 'value': 'alice'},
+              ]),
+            );
+            expect(
+              result['parameters'],
+              containsAll(<Map<String, String>>[
+                {'name': 'browser', 'value': 'chromium'},
+              ]),
+            );
+            expect(
+              result['links'],
+              containsAll(<Map<String, String>>[
+                {
+                  'name': 'bug',
+                  'type': 'issue',
+                  'url': 'https://example.test/BUG-1',
+                },
+              ]),
+            );
 
-        final steps = result['steps'] as List<dynamic>;
-        expect(steps, hasLength(1));
-        final step = steps.single as Map<String, dynamic>;
-        _expectStepFields(
-          step,
-          expectedName: 'outer step',
-          expectedStatus: 'passed',
+            final steps = result['steps'] as List<dynamic>;
+            expect(steps, hasLength(1));
+            final step = steps.single as Map<String, dynamic>;
+            _expectStepFields(
+              step,
+              expectedName: 'outer step',
+              expectedStatus: 'passed',
+            );
+            expect(
+              step['parameters'],
+              containsAll(<Map<String, String>>[
+                {'name': 'attempt', 'value': '1'},
+              ]),
+            );
+            expect(step['attachments'], isEmpty);
+            final attachmentSteps = (step['steps'] as List<dynamic>)
+                .cast<Map<String, dynamic>>();
+            expect(attachmentSteps, hasLength(1));
+            final attachmentStep = attachmentSteps.single;
+            _expectStepFields(
+              attachmentStep,
+              expectedName: 'payload',
+              expectedStatus: 'passed',
+            );
+            final attachments = (attachmentStep['attachments'] as List<dynamic>)
+                .cast<Map<String, dynamic>>();
+            expect(attachments, hasLength(1));
+            expect(attachments.single['name'], 'payload');
+            expect(attachments.single['type'], 'application/json');
+          },
         );
-        expect(
-          step['parameters'],
-          containsAll(<Map<String, String>>[
-            {'name': 'attempt', 'value': '1'},
-          ]),
-        );
-        expect(step['attachments'], isEmpty);
-        final attachmentSteps =
-            (step['steps'] as List<dynamic>).cast<Map<String, dynamic>>();
-        expect(attachmentSteps, hasLength(1));
-        final attachmentStep = attachmentSteps.single;
-        _expectStepFields(
-          attachmentStep,
-          expectedName: 'payload',
-          expectedStatus: 'passed',
-        );
-        final attachments = (attachmentStep['attachments'] as List<dynamic>)
-            .cast<Map<String, dynamic>>();
-        expect(attachments, hasLength(1));
-        expect(attachments.single['name'], 'payload');
-        expect(attachments.single['type'], 'application/json');
-      });
-    });
+      },
+    );
 
     test('loads global metadata from allure-dart.yaml', () async {
       final run = await _runRuntimeSample(
@@ -202,115 +218,131 @@ environment:
       );
 
       await harnessStep(
-          'Verify installAllure applies checked-in allure-dart.yaml metadata',
-          () {
-        expect(run.exitCode, 0, reason: run.output);
-        expect(run.resultFiles, hasLength(1));
+        'Verify installAllure applies checked-in allure-dart.yaml metadata',
+        () {
+          expect(run.exitCode, 0, reason: run.output);
+          expect(run.resultFiles, hasLength(1));
 
-        final result = run.results.single;
-        _expectRuntimeBaseResultFields(
-          result,
-          expectedName: 'runtime plugin passing sample',
-        );
-        expect(
-          result['labels'],
-          containsAll(<Map<String, String>>[
-            {'name': 'module', 'value': 'runtime-fixture'},
-            {'name': 'layer', 'value': 'adapter'},
-            {'name': 'layer', 'value': 'e2e'},
-          ]),
-        );
+          final result = run.results.single;
+          _expectRuntimeBaseResultFields(
+            result,
+            expectedName: 'runtime plugin passing sample',
+          );
+          expect(
+            result['labels'],
+            containsAll(<Map<String, String>>[
+              {'name': 'module', 'value': 'runtime-fixture'},
+              {'name': 'layer', 'value': 'adapter'},
+              {'name': 'layer', 'value': 'e2e'},
+            ]),
+          );
 
-        final environmentFile = run.producedFiles.singleWhere(
-          (file) => p.basename(file.path) == 'environment.properties',
-        );
-        expect(environmentFile.readAsStringSync(), 'local=checked-in\n');
-      });
-    });
-
-    test('preserves representative package:test APIs with installAllure()',
-        () async {
-      final run = await _runRuntimeSample(sampleName: 'api_parity_sample.dart');
-
-      await harnessStep(
-          'Verify package:test APIs remain native with installAllure', () {
-        expect(run.exitCode, isNonZero,
-            reason: 'sample must fail\n${run.output}');
-        expect(run.resultFiles, hasLength(1));
-
-        final result = run.results.single;
-        _expectRuntimeBaseResultFields(
-          result,
-          expectedName: 'runtime plugin api parity sample',
-        );
-        expect(result['status'], 'broken');
-        expect(
-            (result['statusDetails'] as Map<String, dynamic>)['message']
-                as String,
-            contains('ignored by parity sample'));
-      });
-    });
-
-    test('supports lifecycle listeners with installAllure()', () async {
-      final run =
-          await _runRuntimeSample(sampleName: 'listener_lifecycle_sample.dart');
-
-      await harnessStep(
-          'Verify configured lifecycle listener mutates the written result',
-          () {
-        expect(run.exitCode, 0, reason: run.output);
-        expect(run.resultFiles, hasLength(1));
-
-        final result = run.results.single;
-        _expectRuntimeBaseResultFields(
-          result,
-          expectedName: 'listener lifecycle sample',
-        );
-        expect(
-          result['labels'],
-          containsAll(<Map<String, String>>[
-            {'name': 'listener', 'value': 'observed'},
-          ]),
-        );
-      });
+          final environmentFile = run.producedFiles.singleWhere(
+            (file) => p.basename(file.path) == 'environment.properties',
+          );
+          expect(environmentFile.readAsStringSync(), 'local=checked-in\n');
+        },
+      );
     });
 
     test(
-        'derives tag and suite hierarchy labels for nested groups with installAllure()',
-        () async {
-      final run =
-          await _runRuntimeSample(sampleName: 'tags_and_suite_sample.dart');
+      'preserves representative package:test APIs with installAllure()',
+      () async {
+        final run = await _runRuntimeSample(
+          sampleName: 'api_parity_sample.dart',
+        );
+
+        await harnessStep(
+          'Verify package:test APIs remain native with installAllure',
+          () {
+            expect(
+              run.exitCode,
+              isNonZero,
+              reason: 'sample must fail\n${run.output}',
+            );
+            expect(run.resultFiles, hasLength(1));
+
+            final result = run.results.single;
+            _expectRuntimeBaseResultFields(
+              result,
+              expectedName: 'runtime plugin api parity sample',
+            );
+            expect(result['status'], 'broken');
+            expect(
+              (result['statusDetails'] as Map<String, dynamic>)['message']
+                  as String,
+              contains('ignored by parity sample'),
+            );
+          },
+        );
+      },
+    );
+
+    test('supports lifecycle listeners with installAllure()', () async {
+      final run = await _runRuntimeSample(
+        sampleName: 'listener_lifecycle_sample.dart',
+      );
 
       await harnessStep(
+        'Verify configured lifecycle listener mutates the written result',
+        () {
+          expect(run.exitCode, 0, reason: run.output);
+          expect(run.resultFiles, hasLength(1));
+
+          final result = run.results.single;
+          _expectRuntimeBaseResultFields(
+            result,
+            expectedName: 'listener lifecycle sample',
+          );
+          expect(
+            result['labels'],
+            containsAll(<Map<String, String>>[
+              {'name': 'listener', 'value': 'observed'},
+            ]),
+          );
+        },
+      );
+    });
+
+    test(
+      'derives tag and suite hierarchy labels for nested groups with installAllure()',
+      () async {
+        final run = await _runRuntimeSample(
+          sampleName: 'tags_and_suite_sample.dart',
+        );
+
+        await harnessStep(
           'Verify native tags become a tag label and nested groups become suite labels',
           () {
-        expect(run.exitCode, 0, reason: run.output);
-        expect(run.resultFiles, hasLength(1));
+            expect(run.exitCode, 0, reason: run.output);
+            expect(run.resultFiles, hasLength(1));
 
-        final result = run.results.single;
-        _expectRuntimeBaseResultFields(
-          result,
-          expectedName: 'tagged nested test',
-          expectedTitlePath: const [
-            'test',
-            'sample_test.dart',
-            'outer group',
-            'inner group',
-            'deepest group',
-          ],
+            final result = run.results.single;
+            _expectRuntimeBaseResultFields(
+              result,
+              expectedName: 'tagged nested test',
+              expectedTitlePath: const [
+                'test',
+                'sample_test.dart',
+                'outer group',
+                'inner group',
+                'deepest group',
+              ],
+            );
+            expect(result['status'], 'passed');
+            expect(
+              result['labels'],
+              containsAll(<Map<String, String>>[
+                {'name': 'tag', 'value': 'smoke'},
+                {'name': 'parentSuite', 'value': 'outer group'},
+                {'name': 'suite', 'value': 'inner group'},
+                {'name': 'subSuite', 'value': 'deepest group'},
+              ]),
+            );
+          },
         );
-        expect(result['status'], 'passed');
-        expect(
-          result['labels'],
-          containsAll(<Map<String, String>>[
-            {'name': 'tag', 'value': 'smoke'},
-            {'name': 'parentSuite', 'value': 'outer group'},
-            {'name': 'suite', 'value': 'inner group'},
-            {'name': 'subSuite', 'value': 'deepest group'},
-          ]),
-        );
-      });
-    });
+      },
+    );
 
     test('records a retry parameter across installAllure retries', () async {
       final run = await _runRuntimeSample(
@@ -318,114 +350,137 @@ environment:
       );
 
       await harnessStep(
-          'Verify retried installAllure attempts each write a result and one carries retry=1',
-          () {
-        expect(run.exitCode, isNonZero,
-            reason: 'sample must fail\n${run.output}');
-        expect(run.resultFiles, hasLength(2),
-            reason: 'initial attempt plus one retry');
+        'Verify retried installAllure attempts each write a result and one carries retry=1',
+        () {
+          expect(
+            run.exitCode,
+            isNonZero,
+            reason: 'sample must fail\n${run.output}',
+          );
+          expect(
+            run.resultFiles,
+            hasLength(2),
+            reason: 'initial attempt plus one retry',
+          );
 
-        final retryParameters = run.results
-            .expand(
-                (result) => result['parameters'] as List<dynamic>? ?? const [])
-            .whereType<Map>()
-            .where((parameter) => parameter['name'] == 'retry')
-            .toList();
-        expect(retryParameters, hasLength(1));
-        expect(retryParameters.single['value'], '1');
-      });
+          final retryParameters = run.results
+              .expand(
+                (result) => result['parameters'] as List<dynamic>? ?? const [],
+              )
+              .whereType<Map>()
+              .where((parameter) => parameter['name'] == 'retry')
+              .toList();
+          expect(retryParameters, hasLength(1));
+          expect(retryParameters.single['value'], '1');
+        },
+      );
     });
 
     test(
-        'writes categories.json, executor.json, and global attachment/error chunks',
-        () async {
-      final run = await _runRuntimeSample(
-        sampleName: 'categories_executor_globals_sample.dart',
-      );
+      'writes categories.json, executor.json, and global attachment/error chunks',
+      () async {
+        final run = await _runRuntimeSample(
+          sampleName: 'categories_executor_globals_sample.dart',
+        );
 
-      await harnessStep(
+        await harnessStep(
           'Verify installAllure(lifecycle:) writes categories, executor, and globals files',
           () {
-        expect(run.exitCode, 0, reason: run.output);
-        expect(run.resultFiles, hasLength(1));
+            expect(run.exitCode, 0, reason: run.output);
+            expect(run.resultFiles, hasLength(1));
 
-        final categoriesFile = run.producedFiles.singleWhere(
-          (file) => p.basename(file.path) == 'categories.json',
-        );
-        final categories =
-            jsonDecode(categoriesFile.readAsStringSync()) as List<dynamic>;
-        expect(categories, [
-          {
-            'name': 'Sample failures',
-            'matchedStatuses': ['failed'],
+            final categoriesFile = run.producedFiles.singleWhere(
+              (file) => p.basename(file.path) == 'categories.json',
+            );
+            final categories =
+                jsonDecode(categoriesFile.readAsStringSync()) as List<dynamic>;
+            expect(categories, [
+              {
+                'name': 'Sample failures',
+                'matchedStatuses': ['failed'],
+              },
+            ]);
+
+            final executorFile = run.producedFiles.singleWhere(
+              (file) => p.basename(file.path) == 'executor.json',
+            );
+            final executor =
+                jsonDecode(executorFile.readAsStringSync())
+                    as Map<String, dynamic>;
+            expect(executor['name'], 'e2e-executor');
+            expect(executor['type'], 'e2e');
+            expect(
+              executor['buildName'],
+              'categories-executor-globals-sample-build',
+            );
+
+            final globalsFiles = run.producedFiles
+                .where((file) => file.path.endsWith('-globals.json'))
+                .map(
+                  (file) =>
+                      jsonDecode(file.readAsStringSync())
+                          as Map<String, dynamic>,
+                )
+                .toList();
+            // writeGlobalAttachment and writeGlobalError each write their own
+            // globals chunk, so two calls from the sample produce two files.
+            expect(globalsFiles, hasLength(2));
+
+            final allAttachments = globalsFiles
+                .expand(
+                  (globals) => (globals['attachments'] as List<dynamic>)
+                      .cast<Map<String, dynamic>>(),
+                )
+                .toList();
+            expect(allAttachments, hasLength(1));
+            expect(allAttachments.single['name'], 'global payload');
+            final attachmentContent = File(
+              p.join(
+                run.resultsDir.path,
+                allAttachments.single['source'] as String,
+              ),
+            ).readAsStringSync();
+            expect(attachmentContent, 'global-attachment-content');
+
+            final allErrors = globalsFiles
+                .expand(
+                  (globals) => (globals['errors'] as List<dynamic>)
+                      .cast<Map<String, dynamic>>(),
+                )
+                .toList();
+            expect(allErrors, hasLength(1));
+            expect(allErrors.single['message'], 'global error message');
+            expect(allErrors.single['known'], true);
           },
-        ]);
-
-        final executorFile = run.producedFiles.singleWhere(
-          (file) => p.basename(file.path) == 'executor.json',
         );
-        final executor =
-            jsonDecode(executorFile.readAsStringSync()) as Map<String, dynamic>;
-        expect(executor['name'], 'e2e-executor');
-        expect(executor['type'], 'e2e');
-        expect(
-            executor['buildName'], 'categories-executor-globals-sample-build');
+      },
+    );
 
-        final globalsFiles = run.producedFiles
-            .where((file) => file.path.endsWith('-globals.json'))
-            .map(
-              (file) =>
-                  jsonDecode(file.readAsStringSync()) as Map<String, dynamic>,
-            )
-            .toList();
-        // writeGlobalAttachment and writeGlobalError each write their own
-        // globals chunk, so two calls from the sample produce two files.
-        expect(globalsFiles, hasLength(2));
+    test(
+      'only writes the test-plan-selected result with installAllure()',
+      () async {
+        final run = await _runRuntimeSample(
+          sampleName: 'test_plan_sample.dart',
+          testPlanContents:
+              '{"version":"1.0","tests":[{"selector":"test/sample_test.dart#selected by test plan"}]}',
+        );
 
-        final allAttachments = globalsFiles
-            .expand((globals) => (globals['attachments'] as List<dynamic>)
-                .cast<Map<String, dynamic>>())
-            .toList();
-        expect(allAttachments, hasLength(1));
-        expect(allAttachments.single['name'], 'global payload');
-        final attachmentContent = File(
-          p.join(
-              run.resultsDir.path, allAttachments.single['source'] as String),
-        ).readAsStringSync();
-        expect(attachmentContent, 'global-attachment-content');
-
-        final allErrors = globalsFiles
-            .expand((globals) => (globals['errors'] as List<dynamic>)
-                .cast<Map<String, dynamic>>())
-            .toList();
-        expect(allErrors, hasLength(1));
-        expect(allErrors.single['message'], 'global error message');
-        expect(allErrors.single['known'], true);
-      });
-    });
-
-    test('only writes the test-plan-selected result with installAllure()',
-        () async {
-      final run = await _runRuntimeSample(
-        sampleName: 'test_plan_sample.dart',
-        testPlanContents:
-            '{"version":"1.0","tests":[{"selector":"test/sample_test.dart#selected by test plan"}]}',
-      );
-
-      await harnessStep(
+        await harnessStep(
           'Verify only the test-plan-selected test writes an Allure result',
           () {
-        expect(run.exitCode, 0, reason: run.output);
-        expect(run.resultFiles, hasLength(1));
+            expect(run.exitCode, 0, reason: run.output);
+            expect(run.resultFiles, hasLength(1));
 
-        final result = run.results.single;
-        _expectRuntimeBaseResultFields(
-          result,
-          expectedName: 'selected by test plan',
+            final result = run.results.single;
+            _expectRuntimeBaseResultFields(
+              result,
+              expectedName: 'selected by test plan',
+            );
+            expect(result['status'], 'passed');
+          },
         );
-        expect(result['status'], 'passed');
-      });
-    });
+      },
+    );
   });
 }
 
@@ -461,13 +516,14 @@ void _expectRuntimeBaseResultFields(
 
   final labels = result['labels'] as List<dynamic>;
   expect(
-      labels,
-      containsAll(<Map<String, String>>[
-        {'name': 'framework', 'value': 'dart-test'},
-        {'name': 'language', 'value': 'dart'},
-        {'name': 'package', 'value': 'test/sample_test.dart'},
-        {'name': 'testMethod', 'value': expectedName},
-      ]));
+    labels,
+    containsAll(<Map<String, String>>[
+      {'name': 'framework', 'value': 'dart-test'},
+      {'name': 'language', 'value': 'dart'},
+      {'name': 'package', 'value': 'test/sample_test.dart'},
+      {'name': 'testMethod', 'value': expectedName},
+    ]),
+  );
 }
 
 void _expectStepFields(
@@ -509,8 +565,9 @@ Future<_RunSampleResult> _runRuntimeSample({
   String? testPlanContents,
 }) async {
   final repoRoot = Directory.current;
-  final commonsRoot =
-      p.normalize(p.join(repoRoot.path, '..', 'allure_dart_commons'));
+  final commonsRoot = p.normalize(
+    p.join(repoRoot.path, '..', 'allure_dart_commons'),
+  );
   const pubEnvironment = <String, String>{
     'HOME': '/tmp/codex-home',
     'DART_SUPPRESS_ANALYTICS': 'true',
@@ -518,7 +575,8 @@ Future<_RunSampleResult> _runRuntimeSample({
   final sampleSource = File(
     p.join(repoRoot.path, 'test', 'e2e', 'runtime_plugin_samples', sampleName),
   );
-  final pubspecContents = '''
+  final pubspecContents =
+      '''
 name: allure_dart_runtime_e2e_fixture
 publish_to: none
 

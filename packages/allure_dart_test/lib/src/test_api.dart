@@ -205,7 +205,8 @@ void allureTest(
           skipped: skip != null && skip != false,
         );
         final testPlan = parseTestPlan();
-        final excludedByTestPlan = testPlan != null &&
+        final excludedByTestPlan =
+            testPlan != null &&
             !includedInTestPlan(
               testPlan,
               id: metadata.externalId,
@@ -234,14 +235,8 @@ void allureTest(
           testCaseName: metadata.testCaseName,
           titlePath: metadata.titlePath,
           labels: resultLabels,
-          links: <AllureLink>[
-            ...metadata.links,
-            ...links,
-          ],
-          parameters: <AllureParameter>[
-            ...metadata.parameters,
-            ...parameters,
-          ],
+          links: <AllureLink>[...metadata.links, ...links],
+          parameters: <AllureParameter>[...metadata.parameters, ...parameters],
           defaultSuites: metadata.groupPath,
           stage: metadata.skipped || excludedByTestPlan
               ? AllureStage.pending
@@ -299,13 +294,11 @@ PackageTestMetadata _buildCurrentTestMetadata({
   required String fallbackName,
   required bool skipped,
 }) {
-  final liveTest =
-      _maybe<dynamic>(() => internal_invoker.Invoker.current?.liveTest);
+  final liveTest = _maybe<dynamic>(
+    () => internal_invoker.Invoker.current?.liveTest,
+  );
   if (liveTest == null) {
-    return buildPackageTestMetadata(
-      rawName: fallbackName,
-      skipped: skipped,
-    );
+    return buildPackageTestMetadata(rawName: fallbackName, skipped: skipped);
   }
 
   final rawName = liveTest.individualName.toString().isEmpty

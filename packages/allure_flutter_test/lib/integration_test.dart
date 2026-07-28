@@ -42,12 +42,7 @@ void group(
   Object? skip,
   int? retry,
 }) {
-  drop_in.group(
-    description,
-    body,
-    skip: skip,
-    retry: retry,
-  );
+  drop_in.group(description, body, skip: skip, retry: retry);
 }
 
 /// Registers a setup callback as an Allure fixture.

@@ -16,17 +16,15 @@ void main() {
     expect(resultFiles, isNotEmpty);
 
     final results = resultFiles
-        .map((file) =>
-            jsonDecode(file.readAsStringSync()) as Map<String, dynamic>)
+        .map(
+          (file) => jsonDecode(file.readAsStringSync()) as Map<String, dynamic>,
+        )
         .toList();
     final configResults = results
         .where((result) => result['name'] == 'installs via flutter_test_config')
         .toList();
 
-    expect(
-      configResults,
-      isNotEmpty,
-    );
+    expect(configResults, isNotEmpty);
     expect(
       configResults.any(
         (result) => _hasLabel(

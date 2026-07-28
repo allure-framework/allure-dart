@@ -1,5 +1,7 @@
 # allure_dart_test
 
+[![pub package](https://img.shields.io/pub/v/allure_dart_test.svg)](https://pub.dev/packages/allure_dart_test)
+
 `allure_dart_test` is the `package:test` adapter for this workspace.
 
 ## Usage
@@ -7,8 +9,8 @@
 Add the package to your `pubspec.yaml`:
 
 ```yaml
-dependencies:
-  allure_dart_test: ^1.0.0
+dev_dependencies:
+  allure_dart_test: ^1.1.0
 ```
 
 Use the runtime plugin for existing suites:

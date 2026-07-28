@@ -26,11 +26,12 @@ void main() {
         expect(result['attachments'], isEmpty);
         expect(result['parameters'], isEmpty);
         expect(
-            result['labels'],
-            containsAll(<Map<String, String>>[
-              {'name': 'framework', 'value': 'dart-test'},
-              {'name': 'language', 'value': 'dart'},
-            ]));
+          result['labels'],
+          containsAll(<Map<String, String>>[
+            {'name': 'framework', 'value': 'dart-test'},
+            {'name': 'language', 'value': 'dart'},
+          ]),
+        );
         expect(result['links'], isEmpty);
       });
     });
@@ -44,11 +45,12 @@ void main() {
         _expectBaseResultFields(result, expectedName: 'metadata sample');
 
         expect(
-            result['labels'],
-            containsAll(<Map<String, String>>[
-              {'name': 'framework', 'value': 'dart-test'},
-              {'name': 'language', 'value': 'dart'},
-            ]));
+          result['labels'],
+          containsAll(<Map<String, String>>[
+            {'name': 'framework', 'value': 'dart-test'},
+            {'name': 'language', 'value': 'dart'},
+          ]),
+        );
         expect(result['parameters'], [
           {'name': 'browser', 'value': 'chromium'},
         ]);
@@ -74,8 +76,11 @@ void main() {
         expect(steps, hasLength(1));
 
         final outer = steps.single as Map<String, dynamic>;
-        _expectStepFields(outer,
-            expectedName: 'outer step', expectedStatus: 'passed');
+        _expectStepFields(
+          outer,
+          expectedName: 'outer step',
+          expectedStatus: 'passed',
+        );
 
         final nested = outer['steps'] as List<dynamic>;
         expect(nested, hasLength(1));
@@ -93,8 +98,10 @@ void main() {
       await harnessStep('Verify binary test-level attachment payload', () {
         expect(run.exitCode, 0, reason: run.output);
         final result = run.results.single;
-        _expectBaseResultFields(result,
-            expectedName: 'binary attachment sample');
+        _expectBaseResultFields(
+          result,
+          expectedName: 'binary attachment sample',
+        );
 
         expect(result['attachments'], isEmpty);
         final attachment = _expectAttachmentStep(
@@ -144,195 +151,228 @@ void main() {
       });
     });
 
-    test('writes failure details without synthetic test-level error attachment',
-        () async {
-      final run = await _runSample(sampleName: 'failure_sample.dart');
+    test(
+      'writes failure details without synthetic test-level error attachment',
+      () async {
+        final run = await _runSample(sampleName: 'failure_sample.dart');
 
-      await harnessStep(
+        await harnessStep(
           'Verify assertion failure status and absence of synthetic attachment',
           () {
-        expect(run.exitCode, isNonZero,
-            reason: 'sample must fail\n${run.output}');
-        final result = run.results.single;
-        _expectBaseResultFields(result, expectedName: 'failure sample');
+            expect(
+              run.exitCode,
+              isNonZero,
+              reason: 'sample must fail\n${run.output}',
+            );
+            final result = run.results.single;
+            _expectBaseResultFields(result, expectedName: 'failure sample');
 
-        expect(result['status'], 'failed');
-        expect(
-            (result['statusDetails'] as Map<String, dynamic>)['message']
-                as String,
-            contains('Expected: <2>'));
-        expect(
-            (result['statusDetails'] as Map<String, dynamic>)['trace']
-                as String,
-            contains('sample_test.dart'));
+            expect(result['status'], 'failed');
+            expect(
+              (result['statusDetails'] as Map<String, dynamic>)['message']
+                  as String,
+              contains('Expected: <2>'),
+            );
+            expect(
+              (result['statusDetails'] as Map<String, dynamic>)['trace']
+                  as String,
+              contains('sample_test.dart'),
+            );
 
-        final steps = result['steps'] as List<dynamic>;
-        expect(steps, hasLength(1));
-        final step = steps.single as Map<String, dynamic>;
-        _expectStepFields(step,
-            expectedName: 'failing step', expectedStatus: 'failed');
-        expect(
-            (step['statusDetails'] as Map<String, dynamic>)['message']
-                as String,
-            contains('Expected: <2>'));
+            final steps = result['steps'] as List<dynamic>;
+            expect(steps, hasLength(1));
+            final step = steps.single as Map<String, dynamic>;
+            _expectStepFields(
+              step,
+              expectedName: 'failing step',
+              expectedStatus: 'failed',
+            );
+            expect(
+              (step['statusDetails'] as Map<String, dynamic>)['message']
+                  as String,
+              contains('Expected: <2>'),
+            );
 
-        expect(step['attachments'], isEmpty);
-        _expectAttachmentStep(
-          step,
-          expectedName: 'pre-failure context',
-          expectedType: 'text/plain',
-          sourceMatcher: endsWith('.txt'),
+            expect(step['attachments'], isEmpty);
+            _expectAttachmentStep(
+              step,
+              expectedName: 'pre-failure context',
+              expectedType: 'text/plain',
+              sourceMatcher: endsWith('.txt'),
+            );
+
+            final testAttachments = result['attachments'] as List<dynamic>;
+            expect(testAttachments, isEmpty);
+          },
         );
-
-        final testAttachments = result['attachments'] as List<dynamic>;
-        expect(testAttachments, isEmpty);
-      });
-    });
+      },
+    );
 
     test('writes broken status for a non-assertion error', () async {
       final run = await _runSample(sampleName: 'broken_sample.dart');
 
       await harnessStep(
-          'Verify a thrown non-assertion error resolves to broken status', () {
-        expect(run.exitCode, isNonZero,
-            reason: 'sample must fail\n${run.output}');
-        expect(run.resultFiles, hasLength(1));
+        'Verify a thrown non-assertion error resolves to broken status',
+        () {
+          expect(
+            run.exitCode,
+            isNonZero,
+            reason: 'sample must fail\n${run.output}',
+          );
+          expect(run.resultFiles, hasLength(1));
 
-        final result = run.results.single;
-        _expectBaseResultFields(result, expectedName: 'broken sample');
+          final result = run.results.single;
+          _expectBaseResultFields(result, expectedName: 'broken sample');
 
-        expect(result['status'], 'broken');
-        expect(
-          (result['statusDetails'] as Map<String, dynamic>)['message']
-              as String,
-          contains('boom'),
-        );
-      });
+          expect(result['status'], 'broken');
+          expect(
+            (result['statusDetails'] as Map<String, dynamic>)['message']
+                as String,
+            contains('boom'),
+          );
+        },
+      );
     });
 
     test('keeps duplicate allureTest names unique across groups', () async {
       final run = await _runSample(sampleName: 'duplicate_name_sample.dart');
 
       await harnessStep(
-          'Verify duplicate display names keep distinct full names and IDs',
-          () {
-        expect(run.exitCode, 0, reason: run.output);
-        expect(run.resultFiles, hasLength(2));
+        'Verify duplicate display names keep distinct full names and IDs',
+        () {
+          expect(run.exitCode, 0, reason: run.output);
+          expect(run.resultFiles, hasLength(2));
 
-        final fullNames =
-            run.results.map((result) => result['fullName'] as String).toSet();
-        final testCaseIds =
-            run.results.map((result) => result['testCaseId'] as String).toSet();
+          final fullNames = run.results
+              .map((result) => result['fullName'] as String)
+              .toSet();
+          final testCaseIds = run.results
+              .map((result) => result['testCaseId'] as String)
+              .toSet();
 
-        expect(
-          fullNames,
-          {
+          expect(fullNames, {
             'test/sample_test.dart#alpha#shared name',
             'test/sample_test.dart#beta#shared name',
-          },
-        );
-        expect(testCaseIds, hasLength(2));
-      });
+          });
+          expect(testCaseIds, hasLength(2));
+        },
+      );
     });
 
     test('writes extended metadata and classification fields', () async {
       final run = await _runSample(sampleName: 'extended_metadata_sample.dart');
 
       await harnessStep(
-          'Verify display name, test case name, and classification details',
-          () {
-        expect(run.exitCode, 0, reason: run.output);
-        expect(run.resultFiles, hasLength(1));
+        'Verify display name, test case name, and classification details',
+        () {
+          expect(run.exitCode, 0, reason: run.output);
+          expect(run.resultFiles, hasLength(1));
 
-        final result = run.results.single;
-        _expectBaseResultFields(
-          result,
-          expectedName: 'Readable extended metadata',
-          expectedFullNameContains: 'extended metadata sample',
-          expectedTestMethod: 'extended metadata sample',
-        );
-        expect(result['testCaseName'], 'logical extended metadata');
-        expect(result['statusDetails'], containsPair('known', true));
-        expect(result['statusDetails'], containsPair('muted', false));
-        expect(result['statusDetails'], containsPair('flaky', true));
-        expect(result['statusDetails'], containsPair('actual', 'actual-value'));
-        expect(
-          result['statusDetails'],
-          containsPair('expected', 'expected-value'),
-        );
-      });
+          final result = run.results.single;
+          _expectBaseResultFields(
+            result,
+            expectedName: 'Readable extended metadata',
+            expectedFullNameContains: 'extended metadata sample',
+            expectedTestMethod: 'extended metadata sample',
+          );
+          expect(result['testCaseName'], 'logical extended metadata');
+          expect(result['statusDetails'], containsPair('known', true));
+          expect(result['statusDetails'], containsPair('muted', false));
+          expect(result['statusDetails'], containsPair('flaky', true));
+          expect(
+            result['statusDetails'],
+            containsPair('actual', 'actual-value'),
+          );
+          expect(
+            result['statusDetails'],
+            containsPair('expected', 'expected-value'),
+          );
+        },
+      );
     });
 
     test('writes prepared and stream attachment payloads', () async {
       final run = await _runSample(
-          sampleName: 'prepared_stream_attachment_sample.dart');
+        sampleName: 'prepared_stream_attachment_sample.dart',
+      );
 
       await harnessStep(
-          'Verify prepared and stream attachments preserve original payloads',
-          () {
-        expect(run.exitCode, 0, reason: run.output);
-        expect(run.resultFiles, hasLength(1));
+        'Verify prepared and stream attachments preserve original payloads',
+        () {
+          expect(run.exitCode, 0, reason: run.output);
+          expect(run.resultFiles, hasLength(1));
 
-        final result = run.results.single;
-        _expectBaseResultFields(
-          result,
-          expectedName: 'prepared stream attachment sample',
-        );
-        expect(result['attachments'], isEmpty);
-        final attachmentSteps =
-            (result['steps'] as List<dynamic>).cast<Map<String, dynamic>>();
-        expect(attachmentSteps, hasLength(2));
-
-        final contents = <String, String>{};
-        for (final attachmentStep in attachmentSteps) {
-          _expectStepFields(
-            attachmentStep,
-            expectedName: attachmentStep['name'] as String,
-            expectedStatus: 'passed',
+          final result = run.results.single;
+          _expectBaseResultFields(
+            result,
+            expectedName: 'prepared stream attachment sample',
           );
-          final attachments = (attachmentStep['attachments'] as List<dynamic>)
+          expect(result['attachments'], isEmpty);
+          final attachmentSteps = (result['steps'] as List<dynamic>)
               .cast<Map<String, dynamic>>();
-          expect(attachments, hasLength(1));
-          final attachment = attachments.single;
-          expect(attachment['name'], attachmentStep['name']);
-          contents[attachmentStep['name'] as String] = File(
-            p.join(run.resultsDir.path, attachment['source'] as String),
-          ).readAsStringSync();
-        }
-        expect(contents['prepared evidence'], 'prepared evidence payload');
-        expect(contents['stream evidence'], 'stream evidence payload');
-      });
+          expect(attachmentSteps, hasLength(2));
+
+          final contents = <String, String>{};
+          for (final attachmentStep in attachmentSteps) {
+            _expectStepFields(
+              attachmentStep,
+              expectedName: attachmentStep['name'] as String,
+              expectedStatus: 'passed',
+            );
+            final attachments = (attachmentStep['attachments'] as List<dynamic>)
+                .cast<Map<String, dynamic>>();
+            expect(attachments, hasLength(1));
+            final attachment = attachments.single;
+            expect(attachment['name'], attachmentStep['name']);
+            contents[attachmentStep['name'] as String] = File(
+              p.join(run.resultsDir.path, attachment['source'] as String),
+            ).readAsStringSync();
+          }
+          expect(contents['prepared evidence'], 'prepared evidence payload');
+          expect(contents['stream evidence'], 'stream evidence payload');
+        },
+      );
     });
 
     test('records a retry parameter on the retried attempt', () async {
-      final run =
-          await _runSample(sampleName: 'retry_always_fails_sample.dart');
+      final run = await _runSample(
+        sampleName: 'retry_always_fails_sample.dart',
+      );
 
       await harnessStep(
-          'Verify a retried allureTest result carries the retry parameter', () {
-        expect(run.exitCode, isNonZero,
-            reason: 'sample always fails\n${run.output}');
-        // package:test with retry: 1 runs the test up to twice; each
-        // attempt is reported as its own Allure result.
-        expect(run.resultFiles, hasLength(2));
-        for (final result in run.results) {
-          expect(result['status'], 'failed');
-        }
+        'Verify a retried allureTest result carries the retry parameter',
+        () {
+          expect(
+            run.exitCode,
+            isNonZero,
+            reason: 'sample always fails\n${run.output}',
+          );
+          // package:test with retry: 1 runs the test up to twice; each
+          // attempt is reported as its own Allure result.
+          expect(run.resultFiles, hasLength(2));
+          for (final result in run.results) {
+            expect(result['status'], 'failed');
+          }
 
-        final retryParameters = run.results
-            .expand((result) => (result['parameters'] as List<dynamic>)
-                .cast<Map<String, dynamic>>())
-            .where((parameter) => parameter['name'] == 'retry')
-            .toList();
+          final retryParameters = run.results
+              .expand(
+                (result) => (result['parameters'] as List<dynamic>)
+                    .cast<Map<String, dynamic>>(),
+              )
+              .where((parameter) => parameter['name'] == 'retry')
+              .toList();
 
-        expect(retryParameters, hasLength(1),
-            reason: 'exactly the retried attempt should carry retry=1');
-        expect(retryParameters.single['value'], '1');
-      });
+          expect(
+            retryParameters,
+            hasLength(1),
+            reason: 'exactly the retried attempt should carry retry=1',
+          );
+          expect(retryParameters.single['value'], '1');
+        },
+      );
     });
 
-    test('skips allureTest excluded by test plan before the body runs',
-        () async {
+    test('skips allureTest excluded by test plan before the body runs', () async {
       final run = await _runSample(
         sampleName: 'allure_test_plan_sample.dart',
         testPlanContents:
@@ -340,13 +380,14 @@ void main() {
       );
 
       await harnessStep(
-          'Verify test-plan excluded allureTest body did not write a result',
-          () {
-        expect(run.exitCode, 0, reason: run.output);
-        expect(run.resultFiles, isEmpty);
-        expect(run.output, contains('Excluded by Allure test plan'));
-        expect(run.output, isNot(contains('body should not run')));
-      });
+        'Verify test-plan excluded allureTest body did not write a result',
+        () {
+          expect(run.exitCode, 0, reason: run.output);
+          expect(run.resultFiles, isEmpty);
+          expect(run.output, contains('Excluded by Allure test plan'));
+          expect(run.output, isNot(contains('body should not run')));
+        },
+      );
     });
   });
 }
@@ -364,7 +405,9 @@ void _expectBaseResultFields(
   expect(result['name'], expectedName);
   expect(result['fullName'], startsWith('test/sample_test.dart#'));
   expect(
-      result['fullName'], contains(expectedFullNameContains ?? expectedName));
+    result['fullName'],
+    contains(expectedFullNameContains ?? expectedName),
+  );
   expect(result['status'], allOf(isA<String>(), isNotEmpty));
   expect(result['stage'], 'finished');
   expect(result['start'], isA<int>());
@@ -381,13 +424,14 @@ void _expectBaseResultFields(
 
   final labels = result['labels'] as List<dynamic>;
   expect(
-      labels,
-      containsAll(<Map<String, String>>[
-        {'name': 'framework', 'value': 'dart-test'},
-        {'name': 'language', 'value': 'dart'},
-        {'name': 'package', 'value': 'test/sample_test.dart'},
-        {'name': 'testMethod', 'value': expectedTestMethod ?? expectedName},
-      ]));
+    labels,
+    containsAll(<Map<String, String>>[
+      {'name': 'framework', 'value': 'dart-test'},
+      {'name': 'language', 'value': 'dart'},
+      {'name': 'package', 'value': 'test/sample_test.dart'},
+      {'name': 'testMethod', 'value': expectedTestMethod ?? expectedName},
+    ]),
+  );
 }
 
 void _expectStepFields(
@@ -413,8 +457,8 @@ Map<String, dynamic> _expectAttachmentStep(
   required String expectedType,
   required Matcher sourceMatcher,
 }) {
-  final steps =
-      (executable['steps'] as List<dynamic>).cast<Map<String, dynamic>>();
+  final steps = (executable['steps'] as List<dynamic>)
+      .cast<Map<String, dynamic>>();
   expect(steps, hasLength(1));
   final attachmentStep = steps.single;
   _expectStepFields(
@@ -454,15 +498,18 @@ Future<_RunSampleResult> _runSample({
   String? testPlanContents,
 }) async {
   final repoRoot = Directory.current;
-  final commonsRoot =
-      p.normalize(p.join(repoRoot.path, '..', 'allure_dart_commons'));
+  final commonsRoot = p.normalize(
+    p.join(repoRoot.path, '..', 'allure_dart_commons'),
+  );
   const pubEnvironment = <String, String>{
     'HOME': '/tmp/codex-home',
     'DART_SUPPRESS_ANALYTICS': 'true',
   };
-  final sampleSource =
-      File(p.join(repoRoot.path, 'test', 'e2e', 'samples', sampleName));
-  final pubspecContents = '''
+  final sampleSource = File(
+    p.join(repoRoot.path, 'test', 'e2e', 'samples', sampleName),
+  );
+  final pubspecContents =
+      '''
 name: allure_dart_e2e_fixture
 publish_to: none
 
@@ -530,8 +577,9 @@ dev_dependencies:
       resultFiles
         ..clear()
         ..addAll(
-          listProducedFiles(project.resultsDir)
-              .where((file) => file.path.endsWith('-result.json')),
+          listProducedFiles(
+            project.resultsDir,
+          ).where((file) => file.path.endsWith('-result.json')),
         )
         ..sort((a, b) => a.path.compareTo(b.path));
       results

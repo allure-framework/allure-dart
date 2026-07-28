@@ -32,8 +32,11 @@ void main() {
       final run = await _runDropInSample(sampleName: 'failure_sample.dart');
 
       await harnessStep('Verify drop-in assertion failure details', () {
-        expect(run.exitCode, isNonZero,
-            reason: 'sample must fail\n${run.output}');
+        expect(
+          run.exitCode,
+          isNonZero,
+          reason: 'sample must fail\n${run.output}',
+        );
         expect(run.resultFiles, hasLength(1));
 
         final result = run.results.single;
@@ -74,201 +77,220 @@ void main() {
     test('supports nested groups and hooks through drop-in import', () async {
       final run = await _runDropInSample(sampleName: 'group_hooks_sample.dart');
 
-      await harnessStep('Verify drop-in group title path and hook containers',
-          () {
-        expect(run.exitCode, 0, reason: run.output);
-        expect(run.resultFiles, hasLength(1));
+      await harnessStep(
+        'Verify drop-in group title path and hook containers',
+        () {
+          expect(run.exitCode, 0, reason: run.output);
+          expect(run.resultFiles, hasLength(1));
 
-        final result = run.results.single;
-        _expectRuntimeBaseResultFields(
-          result,
-          expectedName: 'nested test uses hooks',
-          expectedTitlePath: const [
-            'test',
-            'sample_test.dart',
-            'parent group',
-          ],
-        );
-        expect(result['status'], 'passed');
-        expect(run.containerFiles, isNotEmpty);
-        final flattenedFixtures = run.containers
-            .map((container) => <dynamic>[
+          final result = run.results.single;
+          _expectRuntimeBaseResultFields(
+            result,
+            expectedName: 'nested test uses hooks',
+            expectedTitlePath: const [
+              'test',
+              'sample_test.dart',
+              'parent group',
+            ],
+          );
+          expect(result['status'], 'passed');
+          expect(run.containerFiles, isNotEmpty);
+          final flattenedFixtures = run.containers
+              .map(
+                (container) => <dynamic>[
                   ...(container['befores'] as List<dynamic>),
                   ...(container['afters'] as List<dynamic>),
-                ])
-            .expand((fixtures) => fixtures);
-        expect(
-          flattenedFixtures.any((fixture) => fixture['name'] == 'setUp'),
-          isTrue,
-        );
-        expect(
-          flattenedFixtures.any((fixture) => fixture['name'] == 'tearDown'),
-          isTrue,
-        );
-        expect(
-          flattenedFixtures.any((fixture) => fixture['name'] == 'setUpAll'),
-          isTrue,
-        );
-        expect(
-          flattenedFixtures.any((fixture) => fixture['name'] == 'tearDownAll'),
-          isTrue,
-        );
-        for (final container in run.containers) {
-          final children =
-              (container['children'] as List<dynamic>).cast<String>().toList();
-          expect(children.toSet().length, children.length);
-        }
-      });
+                ],
+              )
+              .expand((fixtures) => fixtures);
+          expect(
+            flattenedFixtures.any((fixture) => fixture['name'] == 'setUp'),
+            isTrue,
+          );
+          expect(
+            flattenedFixtures.any((fixture) => fixture['name'] == 'tearDown'),
+            isTrue,
+          );
+          expect(
+            flattenedFixtures.any((fixture) => fixture['name'] == 'setUpAll'),
+            isTrue,
+          );
+          expect(
+            flattenedFixtures.any(
+              (fixture) => fixture['name'] == 'tearDownAll',
+            ),
+            isTrue,
+          );
+          for (final container in run.containers) {
+            final children = (container['children'] as List<dynamic>)
+                .cast<String>()
+                .toList();
+            expect(children.toSet().length, children.length);
+          }
+        },
+      );
     });
 
     test('preserves representative package:test APIs unchanged', () async {
       final run = await _runDropInSample(sampleName: 'api_parity_sample.dart');
 
       await harnessStep(
-          'Verify representative package:test APIs still behave natively', () {
-        expect(run.exitCode, isNonZero,
-            reason: 'sample must fail\n${run.output}');
-        expect(run.resultFiles, hasLength(1));
+        'Verify representative package:test APIs still behave natively',
+        () {
+          expect(
+            run.exitCode,
+            isNonZero,
+            reason: 'sample must fail\n${run.output}',
+          );
+          expect(run.resultFiles, hasLength(1));
 
-        final result = run.results.single;
-        _expectRuntimeBaseResultFields(
-          result,
-          expectedName: 'drop in api parity sample',
-        );
-        expect(result['status'], 'broken');
-        expect(
-          (result['statusDetails'] as Map<String, dynamic>)['message']
-              as String,
-          contains('ignored by parity sample'),
-        );
-      });
-    });
-
-    test('does not duplicate hooks when combined with installAllure()',
-        () async {
-      final run = await _runSampleFromDirectory(
-        sampleDirectory: 'mixed_mode_samples',
-        sampleName: 'install_plus_drop_in_sample.dart',
+          final result = run.results.single;
+          _expectRuntimeBaseResultFields(
+            result,
+            expectedName: 'drop in api parity sample',
+          );
+          expect(result['status'], 'broken');
+          expect(
+            (result['statusDetails'] as Map<String, dynamic>)['message']
+                as String,
+            contains('ignored by parity sample'),
+          );
+        },
       );
-
-      await harnessStep(
-          'Verify combined installAllure and drop-in import writes one result',
-          () {
-        expect(run.exitCode, 0, reason: run.output);
-        expect(run.resultFiles, hasLength(1));
-
-        final result = run.results.single;
-        _expectRuntimeBaseResultFields(
-          result,
-          expectedName: 'install plus drop in sample',
-        );
-        expect(result['status'], 'passed');
-      });
-    });
-
-    test('propagates before fixture metadata and keeps after metadata local',
-        () async {
-      final run = await _runDropInSample(
-        sampleName: 'fixture_metadata_sample.dart',
-      );
-
-      await harnessStep(
-          'Verify before fixture metadata reaches the test and after metadata stays on the fixture',
-          () {
-        expect(run.exitCode, 0, reason: run.output);
-        expect(run.resultFiles, hasLength(1));
-
-        final result = run.results.single;
-        _expectRuntimeBaseResultFields(
-          result,
-          expectedName: 'fixture metadata sample',
-        );
-        expect(
-          result['labels'],
-          containsAll(<Map<String, String>>[
-            {'name': 'owner', 'value': 'setup-owner'},
-          ]),
-        );
-        expect(
-          result['parameters'],
-          containsAll(<Map<String, String>>[
-            {'name': 'setup-param', 'value': 'before'},
-          ]),
-        );
-        expect(
-          result['parameters'],
-          isNot(
-            contains(<String, String>{
-              'name': 'teardown-param',
-              'value': 'after',
-            }),
-          ),
-        );
-
-        final afterFixtures = run.containers
-            .expand((container) => container['afters'] as List<dynamic>)
-            .cast<Map<String, dynamic>>()
-            .toList();
-        expect(afterFixtures, isNotEmpty);
-        expect(
-          afterFixtures,
-          contains(
-            containsPair(
-              'description',
-              'after fixture description',
-            ),
-          ),
-        );
-        expect(
-          afterFixtures
-              .expand((fixture) => fixture['parameters'] as List<dynamic>),
-          contains(
-            predicate<Map<dynamic, dynamic>>(
-              (parameter) =>
-                  parameter['name'] == 'teardown-param' &&
-                  parameter['value'] == 'after',
-            ),
-          ),
-        );
-      });
     });
 
     test(
-        'derives tag and suite hierarchy labels for nested groups through drop-in import',
-        () async {
-      final run =
-          await _runDropInSample(sampleName: 'tags_and_suite_sample.dart');
+      'does not duplicate hooks when combined with installAllure()',
+      () async {
+        final run = await _runSampleFromDirectory(
+          sampleDirectory: 'mixed_mode_samples',
+          sampleName: 'install_plus_drop_in_sample.dart',
+        );
 
-      await harnessStep(
+        await harnessStep(
+          'Verify combined installAllure and drop-in import writes one result',
+          () {
+            expect(run.exitCode, 0, reason: run.output);
+            expect(run.resultFiles, hasLength(1));
+
+            final result = run.results.single;
+            _expectRuntimeBaseResultFields(
+              result,
+              expectedName: 'install plus drop in sample',
+            );
+            expect(result['status'], 'passed');
+          },
+        );
+      },
+    );
+
+    test(
+      'propagates before fixture metadata and keeps after metadata local',
+      () async {
+        final run = await _runDropInSample(
+          sampleName: 'fixture_metadata_sample.dart',
+        );
+
+        await harnessStep(
+          'Verify before fixture metadata reaches the test and after metadata stays on the fixture',
+          () {
+            expect(run.exitCode, 0, reason: run.output);
+            expect(run.resultFiles, hasLength(1));
+
+            final result = run.results.single;
+            _expectRuntimeBaseResultFields(
+              result,
+              expectedName: 'fixture metadata sample',
+            );
+            expect(
+              result['labels'],
+              containsAll(<Map<String, String>>[
+                {'name': 'owner', 'value': 'setup-owner'},
+              ]),
+            );
+            expect(
+              result['parameters'],
+              containsAll(<Map<String, String>>[
+                {'name': 'setup-param', 'value': 'before'},
+              ]),
+            );
+            expect(
+              result['parameters'],
+              isNot(
+                contains(<String, String>{
+                  'name': 'teardown-param',
+                  'value': 'after',
+                }),
+              ),
+            );
+
+            final afterFixtures = run.containers
+                .expand((container) => container['afters'] as List<dynamic>)
+                .cast<Map<String, dynamic>>()
+                .toList();
+            expect(afterFixtures, isNotEmpty);
+            expect(
+              afterFixtures,
+              contains(
+                containsPair('description', 'after fixture description'),
+              ),
+            );
+            expect(
+              afterFixtures.expand(
+                (fixture) => fixture['parameters'] as List<dynamic>,
+              ),
+              contains(
+                predicate<Map<dynamic, dynamic>>(
+                  (parameter) =>
+                      parameter['name'] == 'teardown-param' &&
+                      parameter['value'] == 'after',
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    test(
+      'derives tag and suite hierarchy labels for nested groups through drop-in import',
+      () async {
+        final run = await _runDropInSample(
+          sampleName: 'tags_and_suite_sample.dart',
+        );
+
+        await harnessStep(
           'Verify native tags become a tag label and nested groups become suite labels',
           () {
-        expect(run.exitCode, 0, reason: run.output);
-        expect(run.resultFiles, hasLength(1));
+            expect(run.exitCode, 0, reason: run.output);
+            expect(run.resultFiles, hasLength(1));
 
-        final result = run.results.single;
-        _expectRuntimeBaseResultFields(
-          result,
-          expectedName: 'tagged nested test',
-          expectedTitlePath: const [
-            'test',
-            'sample_test.dart',
-            'outer group',
-            'inner group',
-            'deepest group',
-          ],
+            final result = run.results.single;
+            _expectRuntimeBaseResultFields(
+              result,
+              expectedName: 'tagged nested test',
+              expectedTitlePath: const [
+                'test',
+                'sample_test.dart',
+                'outer group',
+                'inner group',
+                'deepest group',
+              ],
+            );
+            expect(result['status'], 'passed');
+            expect(
+              result['labels'],
+              containsAll(<Map<String, String>>[
+                {'name': 'tag', 'value': 'smoke'},
+                {'name': 'parentSuite', 'value': 'outer group'},
+                {'name': 'suite', 'value': 'inner group'},
+                {'name': 'subSuite', 'value': 'deepest group'},
+              ]),
+            );
+          },
         );
-        expect(result['status'], 'passed');
-        expect(
-          result['labels'],
-          containsAll(<Map<String, String>>[
-            {'name': 'tag', 'value': 'smoke'},
-            {'name': 'parentSuite', 'value': 'outer group'},
-            {'name': 'suite', 'value': 'inner group'},
-            {'name': 'subSuite', 'value': 'deepest group'},
-          ]),
-        );
-      });
-    });
+      },
+    );
 
     test('passes testOn and onPlatform through the drop-in wrapper', () async {
       final run = await _runDropInSample(
@@ -276,18 +298,19 @@ void main() {
       );
 
       await harnessStep(
-          'Verify testOn/onPlatform passthrough still writes a passed result',
-          () {
-        expect(run.exitCode, 0, reason: run.output);
-        expect(run.resultFiles, hasLength(1));
+        'Verify testOn/onPlatform passthrough still writes a passed result',
+        () {
+          expect(run.exitCode, 0, reason: run.output);
+          expect(run.resultFiles, hasLength(1));
 
-        final result = run.results.single;
-        _expectRuntimeBaseResultFields(
-          result,
-          expectedName: 'drop in platform passthrough sample',
-        );
-        expect(result['status'], 'passed');
-      });
+          final result = run.results.single;
+          _expectRuntimeBaseResultFields(
+            result,
+            expectedName: 'drop in platform passthrough sample',
+          );
+          expect(result['status'], 'passed');
+        },
+      );
     });
 
     test('writes a skipped result for a declaration-skipped test', () async {
@@ -296,45 +319,51 @@ void main() {
       );
 
       await harnessStep(
-          'Verify declaration `skip: true` still writes a pending, skipped result',
-          () {
-        expect(run.exitCode, 0, reason: run.output);
-        expect(run.resultFiles, hasLength(1));
+        'Verify declaration `skip: true` still writes a pending, skipped result',
+        () {
+          expect(run.exitCode, 0, reason: run.output);
+          expect(run.resultFiles, hasLength(1));
 
-        final result = run.results.single;
-        _expectRuntimeBaseResultFields(
-          result,
-          expectedName: 'drop in declaration skip sample',
-          expectedStage: 'pending',
-        );
-        expect(result['status'], 'skipped');
-      });
+          final result = run.results.single;
+          _expectRuntimeBaseResultFields(
+            result,
+            expectedName: 'drop in declaration skip sample',
+            expectedStage: 'pending',
+          );
+          expect(result['status'], 'skipped');
+        },
+      );
     });
 
-    test('writes a skipped result for a test nested in a skipped group',
-        () async {
-      final run = await _runDropInSample(sampleName: 'group_skip_sample.dart');
+    test(
+      'writes a skipped result for a test nested in a skipped group',
+      () async {
+        final run = await _runDropInSample(
+          sampleName: 'group_skip_sample.dart',
+        );
 
-      await harnessStep(
+        await harnessStep(
           'Verify a group-level skip still schedules and skips nested tests',
           () {
-        expect(run.exitCode, 0, reason: run.output);
-        expect(run.resultFiles, hasLength(1));
+            expect(run.exitCode, 0, reason: run.output);
+            expect(run.resultFiles, hasLength(1));
 
-        final result = run.results.single;
-        _expectRuntimeBaseResultFields(
-          result,
-          expectedName: 'nested test in skipped group',
-          expectedStage: 'pending',
-          expectedTitlePath: const [
-            'test',
-            'sample_test.dart',
-            'drop in skipped group',
-          ],
+            final result = run.results.single;
+            _expectRuntimeBaseResultFields(
+              result,
+              expectedName: 'nested test in skipped group',
+              expectedStage: 'pending',
+              expectedTitlePath: const [
+                'test',
+                'sample_test.dart',
+                'drop in skipped group',
+              ],
+            );
+            expect(result['status'], 'skipped');
+          },
         );
-        expect(result['status'], 'skipped');
-      });
-    });
+      },
+    );
 
     test('skips test-plan excluded tests before the body runs', () async {
       final run = await _runDropInSample(
@@ -344,10 +373,12 @@ void main() {
       );
 
       await harnessStep(
-          'Verify test-plan excluded drop-in test does not write a result', () {
-        expect(run.exitCode, 0, reason: run.output);
-        expect(run.resultFiles, isEmpty);
-      });
+        'Verify test-plan excluded drop-in test does not write a result',
+        () {
+          expect(run.exitCode, 0, reason: run.output);
+          expect(run.resultFiles, isEmpty);
+        },
+      );
     });
   });
 }
@@ -375,10 +406,7 @@ void _expectRuntimeBaseResultFields(
     expectedTitlePath ?? <String>['test', 'sample_test.dart'],
   );
 
-  expect(
-    result,
-    containsPair('statusDetails', isA<Map<String, dynamic>>()),
-  );
+  expect(result, containsPair('statusDetails', isA<Map<String, dynamic>>()));
   expect(result['steps'], isA<List<dynamic>>());
   expect(result['attachments'], isA<List<dynamic>>());
   expect(result['parameters'], isA<List<dynamic>>());
@@ -387,13 +415,14 @@ void _expectRuntimeBaseResultFields(
 
   final labels = result['labels'] as List<dynamic>;
   expect(
-      labels,
-      containsAll(<Map<String, String>>[
-        {'name': 'framework', 'value': 'dart-test'},
-        {'name': 'language', 'value': 'dart'},
-        {'name': 'package', 'value': 'test/sample_test.dart'},
-        {'name': 'testMethod', 'value': expectedName},
-      ]));
+    labels,
+    containsAll(<Map<String, String>>[
+      {'name': 'framework', 'value': 'dart-test'},
+      {'name': 'language', 'value': 'dart'},
+      {'name': 'package', 'value': 'test/sample_test.dart'},
+      {'name': 'testMethod', 'value': expectedName},
+    ]),
+  );
 }
 
 class _RunSampleResult {
@@ -431,8 +460,9 @@ Future<_RunSampleResult> _runSampleFromDirectory({
   String? testPlanContents,
 }) async {
   final repoRoot = Directory.current;
-  final commonsRoot =
-      p.normalize(p.join(repoRoot.path, '..', 'allure_dart_commons'));
+  final commonsRoot = p.normalize(
+    p.join(repoRoot.path, '..', 'allure_dart_commons'),
+  );
   const pubEnvironment = <String, String>{
     'HOME': '/tmp/codex-home',
     'DART_SUPPRESS_ANALYTICS': 'true',
@@ -441,7 +471,8 @@ Future<_RunSampleResult> _runSampleFromDirectory({
   final sampleSource = File(
     p.join(repoRoot.path, 'test', 'e2e', sampleDirectory, sampleName),
   );
-  final pubspecContents = '''
+  final pubspecContents =
+      '''
 name: allure_dart_drop_in_e2e_fixture
 publish_to: none
 
@@ -512,15 +543,11 @@ dev_dependencies:
       final files = listProducedFiles(project.resultsDir);
       resultFiles
         ..clear()
-        ..addAll(
-          files.where((file) => file.path.endsWith('-result.json')),
-        )
+        ..addAll(files.where((file) => file.path.endsWith('-result.json')))
         ..sort((a, b) => a.path.compareTo(b.path));
       containerFiles
         ..clear()
-        ..addAll(
-          files.where((file) => file.path.endsWith('-container.json')),
-        )
+        ..addAll(files.where((file) => file.path.endsWith('-container.json')))
         ..sort((a, b) => a.path.compareTo(b.path));
       results
         ..clear()

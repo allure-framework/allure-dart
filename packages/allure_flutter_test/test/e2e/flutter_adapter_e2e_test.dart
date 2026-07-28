@@ -45,293 +45,340 @@ void main() {
       });
     });
 
-    test('captures an attachment payload written from a testWidgets sample',
-        () async {
-      final run = await _runFlutterSample('attachment_widget_sample.dart');
+    test(
+      'captures an attachment payload written from a testWidgets sample',
+      () async {
+        final run = await _runFlutterSample('attachment_widget_sample.dart');
 
-      await step('Verify attachment payload evidence', (_) async {
-        expect(run.exitCode, 0, reason: run.output);
-        expect(run.resultFiles, hasLength(1));
+        await step('Verify attachment payload evidence', (_) async {
+          expect(run.exitCode, 0, reason: run.output);
+          expect(run.resultFiles, hasLength(1));
 
-        final result = run.results.single;
-        expect(result['name'], 'records an attachment payload');
-        expect(result['status'], 'passed');
+          final result = run.results.single;
+          expect(result['name'], 'records an attachment payload');
+          expect(result['status'], 'passed');
 
-        final steps =
-            (result['steps'] as List<dynamic>).cast<Map<String, dynamic>>();
-        expect(steps, hasLength(1));
-        final attachmentSteps = (steps.single['steps'] as List<dynamic>)
-            .cast<Map<String, dynamic>>();
-        expect(attachmentSteps, hasLength(1));
-        final attachments =
-            (attachmentSteps.single['attachments'] as List<dynamic>)
-                .cast<Map<String, dynamic>>();
-        expect(attachments, hasLength(1));
-        final attachment = attachments.single;
-        expect(attachment['name'], 'widget payload');
-        expect(attachment['type'], 'text/plain');
+          final steps = (result['steps'] as List<dynamic>)
+              .cast<Map<String, dynamic>>();
+          expect(steps, hasLength(1));
+          final attachmentSteps = (steps.single['steps'] as List<dynamic>)
+              .cast<Map<String, dynamic>>();
+          expect(attachmentSteps, hasLength(1));
+          final attachments =
+              (attachmentSteps.single['attachments'] as List<dynamic>)
+                  .cast<Map<String, dynamic>>();
+          expect(attachments, hasLength(1));
+          final attachment = attachments.single;
+          expect(attachment['name'], 'widget payload');
+          expect(attachment['type'], 'text/plain');
 
-        final attachmentContent = File(
-          p.join(run.resultsDir.path, attachment['source'] as String),
-        ).readAsStringSync();
-        expect(attachmentContent, 'flutter-widget-attachment-content');
-      });
-    });
+          final attachmentContent = File(
+            p.join(run.resultsDir.path, attachment['source'] as String),
+          ).readAsStringSync();
+          expect(attachmentContent, 'flutter-widget-attachment-content');
+        });
+      },
+    );
 
     test(
-        'writes a result only for the testWidgets selected by an Allure test plan',
-        () async {
-      final run = await _runFlutterSample(
-        'test_plan_widget_sample.dart',
-        testPlanSelector:
-            'test/samples/test_plan_widget_sample.dart#selected by test plan',
-      );
-
-      await step('Verify test-plan selection excludes the other testWidgets',
-          (_) async {
-        expect(run.exitCode, 0, reason: run.output);
-        expect(run.resultFiles, hasLength(1));
-
-        final result = run.results.single;
-        expect(result['name'], 'selected by test plan');
-        expect(result['status'], 'passed');
-        // The excluded test still shows up as a runner-level skip in the
-        // console output, but its Allure declaration skip means it never
-        // reaches the lifecycle and therefore writes no result file.
-        expect(run.output, contains('excluded by test plan'));
-        expect(
-          run.results
-              .any((result) => result['name'] == 'excluded by test plan'),
-          isFalse,
+      'writes a result only for the testWidgets selected by an Allure test plan',
+      () async {
+        final run = await _runFlutterSample(
+          'test_plan_widget_sample.dart',
+          testPlanSelector:
+              'test/samples/test_plan_widget_sample.dart#selected by test plan',
         );
-      });
-    });
+
+        await step(
+          'Verify test-plan selection excludes the other testWidgets',
+          (_) async {
+            expect(run.exitCode, 0, reason: run.output);
+            expect(run.resultFiles, hasLength(1));
+
+            final result = run.results.single;
+            expect(result['name'], 'selected by test plan');
+            expect(result['status'], 'passed');
+            // The excluded test still shows up as a runner-level skip in the
+            // console output, but its Allure declaration skip means it never
+            // reaches the lifecycle and therefore writes no result file.
+            expect(run.output, contains('excluded by test plan'));
+            expect(
+              run.results.any(
+                (result) => result['name'] == 'excluded by test plan',
+              ),
+              isFalse,
+            );
+          },
+        );
+      },
+    );
 
     test(
-        'writes no Allure result for a declaration-skipped testWidgets with plain installAllure()',
-        () async {
-      final run = await _runFlutterSample(
-        'install_allure_declaration_skip_sample.dart',
-      );
+      'writes no Allure result for a declaration-skipped testWidgets with plain installAllure()',
+      () async {
+        final run = await _runFlutterSample(
+          'install_allure_declaration_skip_sample.dart',
+        );
 
-      await step(
+        await step(
           'Verify installAllure + original imports + declaration skip writes zero results',
           (_) async {
-        expect(run.exitCode, 0, reason: run.output);
-        expect(run.resultFiles, isEmpty);
-      });
-    });
+            expect(run.exitCode, 0, reason: run.output);
+            expect(run.resultFiles, isEmpty);
+          },
+        );
+      },
+    );
 
     test(
-        'supports nested groups and all fixture hooks through the Flutter drop-in import',
-        () async {
-      final run = await _runFlutterSample('group_hooks_widget_sample.dart');
+      'supports nested groups and all fixture hooks through the Flutter drop-in import',
+      () async {
+        final run = await _runFlutterSample('group_hooks_widget_sample.dart');
 
-      await step('Verify group hook containers cover all four fixture types',
+        await step(
+          'Verify group hook containers cover all four fixture types',
           (_) async {
-        expect(run.exitCode, 0, reason: run.output);
-        expect(run.resultFiles, hasLength(1));
+            expect(run.exitCode, 0, reason: run.output);
+            expect(run.resultFiles, hasLength(1));
 
-        final result = run.results.single;
-        expect(result['name'], 'nested testWidgets uses hooks');
-        expect(result['status'], 'passed');
-        expect(run.containerFiles, isNotEmpty);
+            final result = run.results.single;
+            expect(result['name'], 'nested testWidgets uses hooks');
+            expect(result['status'], 'passed');
+            expect(run.containerFiles, isNotEmpty);
 
-        final flattenedFixtures = run.containers
-            .map((container) => <dynamic>[
-                  ...(container['befores'] as List<dynamic>),
-                  ...(container['afters'] as List<dynamic>),
-                ])
-            .expand((fixtures) => fixtures);
-        expect(
-          flattenedFixtures.any((fixture) => fixture['name'] == 'setUp'),
-          isTrue,
+            final flattenedFixtures = run.containers
+                .map(
+                  (container) => <dynamic>[
+                    ...(container['befores'] as List<dynamic>),
+                    ...(container['afters'] as List<dynamic>),
+                  ],
+                )
+                .expand((fixtures) => fixtures);
+            expect(
+              flattenedFixtures.any((fixture) => fixture['name'] == 'setUp'),
+              isTrue,
+            );
+            expect(
+              flattenedFixtures.any((fixture) => fixture['name'] == 'tearDown'),
+              isTrue,
+            );
+            expect(
+              flattenedFixtures.any((fixture) => fixture['name'] == 'setUpAll'),
+              isTrue,
+            );
+            expect(
+              flattenedFixtures.any(
+                (fixture) => fixture['name'] == 'tearDownAll',
+              ),
+              isTrue,
+            );
+          },
         );
-        expect(
-          flattenedFixtures.any((fixture) => fixture['name'] == 'tearDown'),
-          isTrue,
-        );
-        expect(
-          flattenedFixtures.any((fixture) => fixture['name'] == 'setUpAll'),
-          isTrue,
-        );
-        expect(
-          flattenedFixtures.any((fixture) => fixture['name'] == 'tearDownAll'),
-          isTrue,
-        );
-      });
-    });
+      },
+    );
 
     test(
-        'writes a skipped result for a testWidgets nested in a skipped group, and still runs the group setUp fixture',
-        () async {
-      final run = await _runFlutterSample('group_skip_widget_sample.dart');
+      'writes a skipped result for a testWidgets nested in a skipped group, and still runs the group setUp fixture',
+      () async {
+        final run = await _runFlutterSample('group_skip_widget_sample.dart');
 
-      await step(
+        await step(
           'Verify a group-level skip still schedules and skips the nested testWidgets, while the setUp fixture tradeoff still runs',
           (_) async {
-        expect(run.exitCode, 0, reason: run.output);
-        expect(run.resultFiles, hasLength(1));
+            expect(run.exitCode, 0, reason: run.output);
+            expect(run.resultFiles, hasLength(1));
 
-        final result = run.results.single;
-        expect(result['name'], 'nested testWidgets in skipped group');
-        expect(result['status'], 'skipped');
-        expect(result['stage'], 'pending');
+            final result = run.results.single;
+            expect(result['name'], 'nested testWidgets in skipped group');
+            expect(result['status'], 'skipped');
+            expect(result['stage'], 'pending');
 
-        expect(run.containerFiles, isNotEmpty);
-        final flattenedBefores = run.containers.expand(
-          (container) => container['befores'] as List<dynamic>,
+            expect(run.containerFiles, isNotEmpty);
+            final flattenedBefores = run.containers.expand(
+              (container) => container['befores'] as List<dynamic>,
+            );
+            expect(
+              flattenedBefores.any((fixture) => fixture['name'] == 'setUp'),
+              isTrue,
+              reason:
+                  'group-level skip is not forwarded to flutter_test, so '
+                  'fixtures registered inside the skipped group still run '
+                  'before the nested test self-skips',
+            );
+          },
         );
-        expect(
-          flattenedBefores.any((fixture) => fixture['name'] == 'setUp'),
-          isTrue,
-          reason: 'group-level skip is not forwarded to flutter_test, so '
-              'fixtures registered inside the skipped group still run '
-              'before the nested test self-skips',
-        );
-      });
-    });
+      },
+    );
 
     test('records a retry parameter across testWidgets retries', () async {
-      final run =
-          await _runFlutterSample('retry_always_fails_widget_sample.dart');
+      final run = await _runFlutterSample(
+        'retry_always_fails_widget_sample.dart',
+      );
 
       await step(
-          'Verify both retry attempts write a result and one carries retry=1',
-          (_) async {
-        expect(run.exitCode, isNot(0), reason: run.output);
-        expect(run.resultFiles, hasLength(2),
-            reason: 'initial attempt plus one retry');
+        'Verify both retry attempts write a result and one carries retry=1',
+        (_) async {
+          expect(run.exitCode, isNot(0), reason: run.output);
+          expect(
+            run.resultFiles,
+            hasLength(2),
+            reason: 'initial attempt plus one retry',
+          );
 
-        final retryParameters = run.results
-            .expand(
-                (result) => result['parameters'] as List<dynamic>? ?? const [])
-            .whereType<Map>()
-            .where((parameter) => parameter['name'] == 'retry')
-            .toList();
-        expect(retryParameters, hasLength(1));
-        expect(retryParameters.single['value'], '1');
-      });
+          final retryParameters = run.results
+              .expand(
+                (result) => result['parameters'] as List<dynamic>? ?? const [],
+              )
+              .whereType<Map>()
+              .where((parameter) => parameter['name'] == 'retry')
+              .toList();
+          expect(retryParameters, hasLength(1));
+          expect(retryParameters.single['value'], '1');
+        },
+      );
     });
 
     test(
-        'keeps per-file labels, steps, and attachments isolated when running multiple sample files together',
-        () async {
-      final run = await _runFlutterSamples(const <String>[
-        'concurrency_alpha_widget_sample.dart',
-        'concurrency_beta_widget_sample.dart',
-      ]);
+      'keeps per-file labels, steps, and attachments isolated when running multiple sample files together',
+      () async {
+        final run = await _runFlutterSamples(const <String>[
+          'concurrency_alpha_widget_sample.dart',
+          'concurrency_beta_widget_sample.dart',
+        ]);
 
-      await step(
+        await step(
           'Verify sample files run together do not leak labels, steps, or attachments',
           (_) async {
-        expect(run.exitCode, 0, reason: run.output);
-        expect(run.resultFiles, hasLength(2));
+            expect(run.exitCode, 0, reason: run.output);
+            expect(run.resultFiles, hasLength(2));
 
-        final alpha = run.results.singleWhere(
-          (result) =>
-              result['name'] == 'concurrency isolation widget sample alpha',
+            final alpha = run.results.singleWhere(
+              (result) =>
+                  result['name'] == 'concurrency isolation widget sample alpha',
+            );
+            final beta = run.results.singleWhere(
+              (result) =>
+                  result['name'] == 'concurrency isolation widget sample beta',
+            );
+
+            _expectOwnLabelOnly(alpha, own: 'alpha', other: 'beta');
+            _expectOwnLabelOnly(beta, own: 'beta', other: 'alpha');
+
+            final alphaStep = _singleStep(alpha, expectedName: 'alpha step');
+            final betaStep = _singleStep(beta, expectedName: 'beta step');
+
+            final alphaAttachment = _singleAttachment(alphaStep);
+            final betaAttachment = _singleAttachment(betaStep);
+            expect(alphaAttachment['name'], 'alpha payload');
+            expect(betaAttachment['name'], 'beta payload');
+
+            final alphaContent = File(
+              p.join(run.resultsDir.path, alphaAttachment['source'] as String),
+            ).readAsStringSync();
+            final betaContent = File(
+              p.join(run.resultsDir.path, betaAttachment['source'] as String),
+            ).readAsStringSync();
+
+            expect(alphaContent, 'alpha-only-content');
+            expect(betaContent, 'beta-only-content');
+          },
         );
-        final beta = run.results.singleWhere(
-          (result) =>
-              result['name'] == 'concurrency isolation widget sample beta',
-        );
-
-        _expectOwnLabelOnly(alpha, own: 'alpha', other: 'beta');
-        _expectOwnLabelOnly(beta, own: 'beta', other: 'alpha');
-
-        final alphaStep = _singleStep(alpha, expectedName: 'alpha step');
-        final betaStep = _singleStep(beta, expectedName: 'beta step');
-
-        final alphaAttachment = _singleAttachment(alphaStep);
-        final betaAttachment = _singleAttachment(betaStep);
-        expect(alphaAttachment['name'], 'alpha payload');
-        expect(betaAttachment['name'], 'beta payload');
-
-        final alphaContent = File(
-          p.join(run.resultsDir.path, alphaAttachment['source'] as String),
-        ).readAsStringSync();
-        final betaContent = File(
-          p.join(run.resultsDir.path, betaAttachment['source'] as String),
-        ).readAsStringSync();
-
-        expect(alphaContent, 'alpha-only-content');
-        expect(betaContent, 'beta-only-content');
-      });
-    });
+      },
+    );
 
     test(
-        'attaches a screenshot on failure when auto screenshot-on-failure is enabled',
-        () async {
-      final run = await _runFlutterSample(
-        'failing_with_screenshot_sample.dart',
-        sampleDirSegments: const <String>['test', 'e2e', 'screenshot_samples'],
-      );
+      'attaches a screenshot on failure when auto screenshot-on-failure is enabled',
+      () async {
+        final run = await _runFlutterSample(
+          'failing_with_screenshot_sample.dart',
+          sampleDirSegments: const <String>[
+            'test',
+            'e2e',
+            'screenshot_samples',
+          ],
+        );
 
-      await step('Verify a PNG screenshot is attached to the failed result',
-          (_) async {
-        expect(run.exitCode, isNot(0), reason: run.output);
-        expect(run.resultFiles, hasLength(1));
+        await step('Verify a PNG screenshot is attached to the failed result', (
+          _,
+        ) async {
+          expect(run.exitCode, isNot(0), reason: run.output);
+          expect(run.resultFiles, hasLength(1));
 
-        final result = run.results.single;
-        expect(result['name'], 'fails after pumping a widget');
-        expect(result['status'], 'failed');
+          final result = run.results.single;
+          expect(result['name'], 'fails after pumping a widget');
+          expect(result['status'], 'failed');
 
-        final attachment =
-            _findAttachment(result, name: 'screenshot-on-failure');
-        expect(attachment, isNotNull, reason: run.output);
-        expect(attachment!['type'], 'image/png');
+          final attachment = _findAttachment(
+            result,
+            name: 'screenshot-on-failure',
+          );
+          expect(attachment, isNotNull, reason: run.output);
+          expect(attachment!['type'], 'image/png');
 
-        final bytes = File(
-          p.join(run.resultsDir.path, attachment['source'] as String),
-        ).readAsBytesSync();
-        _expectPngMagicBytes(bytes);
-      });
-    });
+          final bytes = File(
+            p.join(run.resultsDir.path, attachment['source'] as String),
+          ).readAsBytesSync();
+          _expectPngMagicBytes(bytes);
+        });
+      },
+    );
 
     test(
-        'attaches golden-actual and failure diff PNGs on a golden mismatch when auto golden-diff attach is enabled',
-        () async {
-      final run = await _runFlutterSample(
-        'golden_mismatch_sample.dart',
-        sampleDirSegments: const <String>['test', 'e2e', 'golden_samples'],
-      );
+      'attaches golden-actual and failure diff PNGs on a golden mismatch when auto golden-diff attach is enabled',
+      () async {
+        final run = await _runFlutterSample(
+          'golden_mismatch_sample.dart',
+          sampleDirSegments: const <String>['test', 'e2e', 'golden_samples'],
+        );
 
-      await step(
+        await step(
           'Verify golden-actual and disk failure diffs are attached to the failed result',
           (_) async {
-        expect(run.exitCode, isNot(0), reason: run.output);
-        expect(run.resultFiles, hasLength(1));
+            expect(run.exitCode, isNot(0), reason: run.output);
+            expect(run.resultFiles, hasLength(1));
 
-        final result = run.results.single;
-        expect(result['name'], 'mismatches the committed golden file');
-        expect(result['status'], isNot('passed'));
+            final result = run.results.single;
+            expect(result['name'], 'mismatches the committed golden file');
+            expect(result['status'], isNot('passed'));
 
-        final actualAttachment = _findAttachment(result, name: 'golden-actual');
-        expect(actualAttachment, isNotNull, reason: run.output);
-        expect(actualAttachment!['type'], 'image/png');
-        _expectPngMagicBytes(
-          File(
-            p.join(run.resultsDir.path, actualAttachment['source'] as String),
-          ).readAsBytesSync(),
+            final actualAttachment = _findAttachment(
+              result,
+              name: 'golden-actual',
+            );
+            expect(actualAttachment, isNotNull, reason: run.output);
+            expect(actualAttachment!['type'], 'image/png');
+            _expectPngMagicBytes(
+              File(
+                p.join(
+                  run.resultsDir.path,
+                  actualAttachment['source'] as String,
+                ),
+              ).readAsBytesSync(),
+            );
+
+            // `LocalFileComparator` always writes `masterImage`/`testImage`
+            // diffs on a mismatch (`maskedDiff`/`isolatedDiff` are only added
+            // for same-size pixel mismatches), so these two are asserted
+            // unconditionally while the other two remain best-effort.
+            for (final suffix in const ['masterImage', 'testImage']) {
+              final diffAttachment = _findAttachment(
+                result,
+                name: 'golden-$suffix',
+              );
+              expect(diffAttachment, isNotNull, reason: run.output);
+              _expectPngMagicBytes(
+                File(
+                  p.join(
+                    run.resultsDir.path,
+                    diffAttachment!['source'] as String,
+                  ),
+                ).readAsBytesSync(),
+              );
+            }
+          },
         );
-
-        // `LocalFileComparator` always writes `masterImage`/`testImage`
-        // diffs on a mismatch (`maskedDiff`/`isolatedDiff` are only added
-        // for same-size pixel mismatches), so these two are asserted
-        // unconditionally while the other two remain best-effort.
-        for (final suffix in const ['masterImage', 'testImage']) {
-          final diffAttachment =
-              _findAttachment(result, name: 'golden-$suffix');
-          expect(diffAttachment, isNotNull, reason: run.output);
-          _expectPngMagicBytes(
-            File(
-              p.join(run.resultsDir.path, diffAttachment!['source'] as String),
-            ).readAsBytesSync(),
-          );
-        }
-      });
-    });
+      },
+    );
   });
 }
 
@@ -377,8 +424,8 @@ void _expectOwnLabelOnly(
   required String own,
   required String other,
 }) {
-  final labels =
-      (result['labels'] as List<dynamic>).cast<Map<String, dynamic>>();
+  final labels = (result['labels'] as List<dynamic>)
+      .cast<Map<String, dynamic>>();
   final sampleLabelValues = labels
       .where((label) => label['name'] == 'sample')
       .map((label) => label['value'])
@@ -400,8 +447,8 @@ Map<String, dynamic> _singleStep(
 }
 
 Map<String, dynamic> _singleAttachment(Map<String, dynamic> step) {
-  final attachmentSteps =
-      (step['steps'] as List<dynamic>).cast<Map<String, dynamic>>();
+  final attachmentSteps = (step['steps'] as List<dynamic>)
+      .cast<Map<String, dynamic>>();
   expect(attachmentSteps, hasLength(1));
   final attachments = (attachmentSteps.single['attachments'] as List<dynamic>)
       .cast<Map<String, dynamic>>();
@@ -468,9 +515,7 @@ Future<_FlutterSampleRun> _runFlutterSamples(
   final tempDir = await Directory.systemTemp.createTemp('allure_flutter_e2e_');
   final resultsDir = Directory(p.join(tempDir.path, 'allure-results'));
 
-  final environment = <String, String>{
-    'ALLURE_RESULTS_DIR': resultsDir.path,
-  };
+  final environment = <String, String>{'ALLURE_RESULTS_DIR': resultsDir.path};
 
   if (testPlanSelector != null) {
     final testPlanFile = File(p.join(tempDir.path, 'testplan.json'));
@@ -503,22 +548,24 @@ Future<_FlutterSampleRun> _runFlutterSamples(
       ? resultsDir.listSync().whereType<File>().toList()
       : <File>[];
 
-  final resultFiles = producedFiles
-      .where((file) => file.path.endsWith('-result.json'))
-      .toList()
-    ..sort((a, b) => a.path.compareTo(b.path));
-  final containerFiles = producedFiles
-      .where((file) => file.path.endsWith('-container.json'))
-      .toList()
-    ..sort((a, b) => a.path.compareTo(b.path));
+  final resultFiles =
+      producedFiles.where((file) => file.path.endsWith('-result.json')).toList()
+        ..sort((a, b) => a.path.compareTo(b.path));
+  final containerFiles =
+      producedFiles
+          .where((file) => file.path.endsWith('-container.json'))
+          .toList()
+        ..sort((a, b) => a.path.compareTo(b.path));
 
   final results = resultFiles
       .map(
-          (file) => jsonDecode(file.readAsStringSync()) as Map<String, dynamic>)
+        (file) => jsonDecode(file.readAsStringSync()) as Map<String, dynamic>,
+      )
       .toList();
   final containers = containerFiles
       .map(
-          (file) => jsonDecode(file.readAsStringSync()) as Map<String, dynamic>)
+        (file) => jsonDecode(file.readAsStringSync()) as Map<String, dynamic>,
+      )
       .toList();
 
   final run = _FlutterSampleRun(
