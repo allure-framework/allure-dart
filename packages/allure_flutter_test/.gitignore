@@ -1,2 +1,5 @@
 # LocalFileComparator failure diffs written next to goldens during test runs
 **/failures/
+
+# Accidental local packages created while experimenting with flutter create
+flutter_package_*/

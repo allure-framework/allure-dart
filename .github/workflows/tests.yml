@@ -59,6 +59,9 @@ jobs:
         working-directory: packages/allure_flutter_test
         run: flutter analyze --no-fatal-infos
 
+      - name: Publish dry-run
+        run: bash scripts/publish-dry-run.sh
+
   build:
     name: Build (${{ matrix.name }})
     runs-on: ${{ matrix.os }}
