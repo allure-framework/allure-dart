@@ -197,96 +197,98 @@ void allureTest(
   t.test(
     description,
     () async {
-      setGlobalTestRuntime(_globalAllureRuntime);
-
-      final metadata = _buildCurrentTestMetadata(
-        fallbackName: description,
-        skipped: skip != null && skip != false,
-      );
-      final testPlan = parseTestPlan();
-      final excludedByTestPlan = testPlan != null &&
-          !includedInTestPlan(
-            testPlan,
-            id: metadata.externalId,
-            fullName: metadata.fullName,
-            nativeSelector: metadata.nativeSelector,
-            tags: metadata.rawTags,
-          );
-      final resultLabels = <AllureLabel>[
-        ...metadata.labels,
-        if (metadata.packagePath != null)
-          getPackageLabel(metadata.packagePath!),
-        getFrameworkLabel('dart-test'),
-        getLanguageLabel(),
-        getHostLabel(),
-        getThreadLabel(),
-        AllureLabel(name: 'testMethod', value: metadata.name),
-        AllureLabel(name: 'testClass', value: metadata.testClass),
-        ...labels,
-      ];
-      if (excludedByTestPlan) {
-        addSkipLabel(resultLabels);
-      }
-      final testUuid = globalAllureLifecycle.startTest(
-        name: metadata.name,
-        fullName: metadata.fullName,
-        testCaseName: metadata.testCaseName,
-        titlePath: metadata.titlePath,
-        labels: resultLabels,
-        links: <AllureLink>[
-          ...metadata.links,
-          ...links,
-        ],
-        parameters: <AllureParameter>[
-          ...metadata.parameters,
-          ...parameters,
-        ],
-        defaultSuites: metadata.groupPath,
-        stage: metadata.skipped || excludedByTestPlan
-            ? AllureStage.pending
-            : AllureStage.running,
-      );
-
-      final context = AllureTestContext(globalAllureLifecycle, testUuid);
-      Object? caughtError;
-      StackTrace? caughtStackTrace;
-
-      try {
+      // Zone-scoped runtime keeps the process-wide adapter runtime intact for
+      // later plain/drop-in tests in the same isolate.
+      await runWithTestRuntime(_globalAllureRuntime, () async {
+        final metadata = _buildCurrentTestMetadata(
+          fallbackName: description,
+          skipped: skip != null && skip != false,
+        );
+        final testPlan = parseTestPlan();
+        final excludedByTestPlan = testPlan != null &&
+            !includedInTestPlan(
+              testPlan,
+              id: metadata.externalId,
+              fullName: metadata.fullName,
+              nativeSelector: metadata.nativeSelector,
+              tags: metadata.rawTags,
+            );
+        final resultLabels = <AllureLabel>[
+          ...metadata.labels,
+          if (metadata.packagePath != null)
+            getPackageLabel(metadata.packagePath!),
+          getFrameworkLabel('dart-test'),
+          getLanguageLabel(),
+          getHostLabel(),
+          getThreadLabel(),
+          AllureLabel(name: 'testMethod', value: metadata.name),
+          AllureLabel(name: 'testClass', value: metadata.testClass),
+          ...labels,
+        ];
         if (excludedByTestPlan) {
-          t.markTestSkipped('Excluded by Allure test plan');
+          addSkipLabel(resultLabels);
+        }
+        final testUuid = globalAllureLifecycle.startTest(
+          name: metadata.name,
+          fullName: metadata.fullName,
+          testCaseName: metadata.testCaseName,
+          titlePath: metadata.titlePath,
+          labels: resultLabels,
+          links: <AllureLink>[
+            ...metadata.links,
+            ...links,
+          ],
+          parameters: <AllureParameter>[
+            ...metadata.parameters,
+            ...parameters,
+          ],
+          defaultSuites: metadata.groupPath,
+          stage: metadata.skipped || excludedByTestPlan
+              ? AllureStage.pending
+              : AllureStage.running,
+        );
+
+        final context = AllureTestContext(globalAllureLifecycle, testUuid);
+        Object? caughtError;
+        StackTrace? caughtStackTrace;
+
+        try {
+          if (excludedByTestPlan) {
+            t.markTestSkipped('Excluded by Allure test plan');
+            await globalAllureLifecycle.stopTest(
+              testUuid,
+              status: AllureStatus.skipped,
+              statusDetails: const AllureStatusDetails(
+                message: 'Excluded by Allure test plan',
+              ),
+            );
+          } else {
+            await runWithAllureContext(
+              rootUuid: testUuid,
+              testUuid: testUuid,
+              body: () async => await body(context),
+            );
+            await globalAllureLifecycle.stopTest(
+              testUuid,
+              status: AllureStatus.passed,
+            );
+          }
+        } catch (error, stackTrace) {
+          caughtError = error;
+          caughtStackTrace = stackTrace;
           await globalAllureLifecycle.stopTest(
             testUuid,
-            status: AllureStatus.skipped,
-            statusDetails: const AllureStatusDetails(
-              message: 'Excluded by Allure test plan',
-            ),
-          );
-        } else {
-          await runWithAllureContext(
-            rootUuid: testUuid,
-            testUuid: testUuid,
-            body: () async => await body(context),
-          );
-          await globalAllureLifecycle.stopTest(
-            testUuid,
-            status: AllureStatus.passed,
+            status: getStatusFromError(error, stackTrace),
+            error: error,
+            stackTrace: stackTrace,
           );
         }
-      } catch (error, stackTrace) {
-        caughtError = error;
-        caughtStackTrace = stackTrace;
-        await globalAllureLifecycle.stopTest(
-          testUuid,
-          status: getStatusFromError(error, stackTrace),
-          error: error,
-          stackTrace: stackTrace,
-        );
-      }
 
-      await globalAllureLifecycle.writeTest(testUuid);
-      if (caughtError != null) {
-        Error.throwWithStackTrace(caughtError, caughtStackTrace!);
-      }
+        await globalAllureLifecycle.writeTest(testUuid);
+        if (caughtError != null) {
+          Error.throwWithStackTrace(caughtError, caughtStackTrace!);
+        }
+      });
     },
     timeout: timeout,
     skip: skip,

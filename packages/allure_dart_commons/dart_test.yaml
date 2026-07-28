@@ -1,0 +1,7 @@
+# Chrome on ubuntu-latest CI cannot use the default sandbox (AppArmor /
+# unprivileged user namespaces). Keep these flags scoped to the chrome
+# platform so VM `dart test` is unchanged.
+override_platforms:
+  chrome:
+    settings:
+      arguments: --no-sandbox --disable-setuid-sandbox --disable-dev-shm-usage

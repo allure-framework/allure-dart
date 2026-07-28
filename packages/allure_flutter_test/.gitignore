@@ -1,0 +1,2 @@
+# LocalFileComparator failure diffs written next to goldens during test runs
+**/failures/

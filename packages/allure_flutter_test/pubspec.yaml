@@ -6,7 +6,7 @@ repository: https://github.com/allure-framework/allure-dart
 issue_tracker: https://github.com/allure-framework/allure-dart/issues
 
 environment:
-  sdk: ^3.6.0
+  sdk: ^3.8.0
   flutter: '>=3.24.0'
 
 dependencies:
@@ -18,7 +18,11 @@ dependencies:
     sdk: flutter
   integration_test:
     sdk: flutter
+  # Version is pinned by the Flutter SDK's own flutter_test dependency, so
+  # use `any` rather than a manually tracked constraint.
+  leak_tracker_flutter_testing: any
+  test_api: any
 
 dev_dependencies:
-  lints: ^5.1.1
+  lints: ^6.1.0
   path: ^1.9.0

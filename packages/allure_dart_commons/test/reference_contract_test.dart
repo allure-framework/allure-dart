@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:allure_dart_commons/allure_dart_commons.dart';
-import 'package:allure_dart_test/adapter_support.dart' as adapter_support;
 import 'package:allure_dart_test/allure_dart_test.dart'
     show attachment, description, installAllure, step;
 import 'package:path/path.dart' as p;
@@ -13,6 +12,198 @@ void main() {
   installAllure();
 
   group('reference parity helpers', () {
+    test('classifies unexpected errors as broken despite test_api frames',
+        () async {
+      await description('''
+Verifies that non-assertion errors stay `broken` even when the stack includes `package:test_api` frames.
+
+A naive `package:test` substring check would also match `package:test_api`, which appears on every framework-mediated throw and would incorrectly collapse unexpected errors into `failed`.
+''');
+
+      await step('Classify a StateError whose stack mentions test_api', (_) {
+        final status = getStatusFromError(
+          StateError('boom'),
+          StackTrace.fromString(
+            '#0      main (file:///tmp/sample_test.dart:5:5)\n'
+            '#1      Declarer.test (package:test_api/src/backend/declarer.dart:253:25)\n',
+          ),
+        );
+        expect(status, AllureStatus.broken);
+      });
+
+      await step('Still classify matcher stack frames as failed', (_) {
+        final status = getStatusFromError(
+          Exception('nope'),
+          StackTrace.fromString(
+            '#0      expect (package:matcher/src/expect/expect.dart:65:3)\n'
+            '#1      main (file:///tmp/sample_test.dart:5:5)\n',
+          ),
+        );
+        expect(status, AllureStatus.failed);
+      });
+    });
+
+    test('lets env and config overrides replace automatic adapter labels',
+        () async {
+      await description('''
+Verifies issue #12 and the same override rule for the rest of the adapter-generated
+singleton label set (`framework`, `language`, `host`, `thread`, `package`,
+`testClass`, `testMethod`).
+
+Automatic values must not survive alongside an env or config override with the
+same name. Multi-value labels such as `tag` must still be allowed to repeat.
+''');
+
+      await step('Prefer ALLURE_LABEL_* when building host/thread helpers',
+          (_) {
+        expect(
+          getHostLabel(<String, String>{'ALLURE_LABEL_host': 'ci-runner-01'})
+              .value,
+          'ci-runner-01',
+        );
+        expect(
+          getThreadLabel(
+            null,
+            <String, String>{'ALLURE_LABEL_thread': 'worker-7'},
+          ).value,
+          'worker-7',
+        );
+      });
+
+      await step(
+        'Collapse singleton labels keeps last override, preserves tag repeats',
+        (_) {
+          final collapsed = collapseSingletonLabels(<AllureLabel>[
+            const AllureLabel(name: 'framework', value: 'dart-test'),
+            const AllureLabel(name: 'language', value: 'dart'),
+            const AllureLabel(name: 'host', value: 'auto-host'),
+            const AllureLabel(name: 'tag', value: 'a'),
+            const AllureLabel(name: 'thread', value: 'pid-1'),
+            const AllureLabel(name: 'package', value: 'test/auto.dart'),
+            const AllureLabel(name: 'testClass', value: 'AutoClass'),
+            const AllureLabel(name: 'testMethod', value: 'autoMethod'),
+            const AllureLabel(name: 'framework', value: 'custom-framework'),
+            const AllureLabel(name: 'language', value: 'custom-lang'),
+            const AllureLabel(name: 'host', value: 'ci-runner-01'),
+            const AllureLabel(name: 'tag', value: 'b'),
+            const AllureLabel(name: 'thread', value: 'worker-7'),
+            const AllureLabel(name: 'package', value: 'custom/package.dart'),
+            const AllureLabel(name: 'testClass', value: 'CustomClass'),
+            const AllureLabel(name: 'testMethod', value: 'customMethod'),
+          ]);
+          expect(
+            _labelPairs(collapsed),
+            <String>[
+              'tag=a',
+              'framework=custom-framework',
+              'language=custom-lang',
+              'host=ci-runner-01',
+              'tag=b',
+              'thread=worker-7',
+              'package=custom/package.dart',
+              'testClass=CustomClass',
+              'testMethod=customMethod',
+            ],
+          );
+          expect(
+            singletonAutomaticLabelNames,
+            <String>{
+              'framework',
+              'language',
+              'host',
+              'thread',
+              'package',
+              'testClass',
+              'testMethod',
+            },
+          );
+        },
+      );
+
+      final resultsDir = await step(
+        'Create isolated Allure results directory',
+        (_) => Directory.systemTemp.createTemp('allure_dart_label_override_'),
+      );
+      addTearDown(() async {
+        if (resultsDir.existsSync()) {
+          await resultsDir.delete(recursive: true);
+        }
+      });
+
+      late Map<String, dynamic> result;
+
+      await step(
+        'Write a result with automatic adapter labels then config overrides',
+        (_) async {
+          final lifecycle = AllureLifecycle(
+            writer: AllureResultsWriter(outputDirectory: resultsDir.path),
+            // Simulates config / late-applied override labels that land after
+            // the automatic adapter labels added at startTest.
+            globalLabels: const <AllureLabel>[
+              AllureLabel(name: 'framework', value: 'custom-framework'),
+              AllureLabel(name: 'language', value: 'custom-lang'),
+              AllureLabel(name: 'host', value: 'ci-runner-01'),
+              AllureLabel(name: 'thread', value: 'worker-7'),
+              AllureLabel(name: 'package', value: 'custom/package.dart'),
+              AllureLabel(name: 'testClass', value: 'CustomClass'),
+              AllureLabel(name: 'testMethod', value: 'customMethod'),
+            ],
+          );
+          final testUuid = lifecycle.startTest(
+            name: 'override labels',
+            fullName: 'suite/file#override-labels',
+            labels: <AllureLabel>[
+              const AllureLabel(name: 'framework', value: 'dart-test'),
+              const AllureLabel(name: 'language', value: 'dart'),
+              const AllureLabel(name: 'host', value: 'auto-host'),
+              const AllureLabel(name: 'thread', value: 'pid-1'),
+              const AllureLabel(name: 'package', value: 'test/auto.dart'),
+              const AllureLabel(name: 'testClass', value: 'AutoClass'),
+              const AllureLabel(name: 'testMethod', value: 'autoMethod'),
+              const AllureLabel(name: 'tag', value: 'keep-me'),
+            ],
+          );
+          await lifecycle.stopTest(testUuid, status: AllureStatus.passed);
+          await lifecycle.writeTest(testUuid);
+
+          final resultFile = resultsDir
+              .listSync()
+              .whereType<File>()
+              .singleWhere((file) => file.path.endsWith('-result.json'));
+          result =
+              jsonDecode(resultFile.readAsStringSync()) as Map<String, dynamic>;
+          await _attachDirectoryFiles(resultsDir);
+        },
+      );
+
+      await step('Verify each singleton label keeps only the override', (_) {
+        final labels =
+            (result['labels'] as List<dynamic>).cast<Map<String, dynamic>>();
+        for (final entry in <String, String>{
+          'framework': 'custom-framework',
+          'language': 'custom-lang',
+          'host': 'ci-runner-01',
+          'thread': 'worker-7',
+          'package': 'custom/package.dart',
+          'testClass': 'CustomClass',
+          'testMethod': 'customMethod',
+        }.entries) {
+          final values = labels
+              .where((label) => label['name'] == entry.key)
+              .map((label) => label['value'])
+              .toList();
+          expect(values, <String>[entry.value],
+              reason: 'expected a single ${entry.key} override');
+        }
+        expect(
+          labels.any(
+            (label) => label['name'] == 'tag' && label['value'] == 'keep-me',
+          ),
+          isTrue,
+        );
+      });
+    });
+
     test('derives suite labels from title path hierarchy', () async {
       await description('''
 Verifies that generated suite labels follow the Allure hierarchy convention used by sibling adapters.
@@ -494,6 +685,140 @@ The lifecycle should preserve `testCaseName`, status classification flags, optio
       });
     });
 
+    test(
+        'keeps after-fixture metadata local to the fixture and out of the linked test',
+        () async {
+      await description('''
+Verifies that metadata emitted while an AFTER fixture is active stays local instead of propagating like before-fixture metadata does.
+
+The description and parameter set during an after fixture should be recorded directly on that fixture's entry inside the container, not on the container's shared scope-level fields. A label set during the same after fixture has no home on the fixture model, and none of this metadata may leak onto the linked test result.
+''');
+      final resultsDir = await step(
+        'Create isolated Allure results directory',
+        (_) => Directory.systemTemp.createTemp('allure_dart_reference_'),
+      );
+      addTearDown(() async {
+        if (resultsDir.existsSync()) {
+          await resultsDir.delete(recursive: true);
+        }
+      });
+
+      late Map<String, dynamic> result;
+      late Map<String, dynamic> container;
+
+      await step(
+        'Write after-fixture metadata, stop fixture, then run linked test',
+        (_) async {
+          final lifecycle = AllureLifecycle(
+            writer: AllureResultsWriter(outputDirectory: resultsDir.path),
+          );
+          final scopeId = lifecycle.ensureScope(
+            id: 'scope:after-fixture',
+            name: 'after fixture scope',
+            expectedChildrenCount: 1,
+          );
+          final fixtureUuid = lifecycle.startFixture(
+            scopeId: scopeId,
+            before: false,
+            name: 'tearDown',
+          );
+          await lifecycle.handleRuntimeMessage(
+            RuntimeMessage(
+              type: 'metadata',
+              data: <String, Object?>{
+                'description': 'after fixture notes',
+                'labels': <Map<String, String>>[
+                  const AllureLabel(name: 'owner', value: 'team-x').toJson(),
+                ],
+                'parameters': <Map<String, Object?>>[
+                  const AllureParameter(
+                    name: 'cleanupTarget',
+                    value: 'cache',
+                  ).toJson(),
+                ],
+              },
+            ),
+            rootUuid: fixtureUuid,
+          );
+          await lifecycle.stopFixture(
+            fixtureUuid,
+            status: AllureStatus.passed,
+          );
+
+          final testUuid = lifecycle.startTest(
+            name: 'after fixture linked test',
+            fullName: 'suite/file#after-fixture-linked',
+            scopeIds: <String>[scopeId],
+          );
+          await lifecycle.stopTest(testUuid, status: AllureStatus.passed);
+          await lifecycle.writeTest(testUuid);
+
+          final resultFile = resultsDir
+              .listSync()
+              .whereType<File>()
+              .singleWhere((file) => file.path.endsWith('-result.json'));
+          final containerFile = resultsDir
+              .listSync()
+              .whereType<File>()
+              .singleWhere((file) => file.path.endsWith('-container.json'));
+          result =
+              jsonDecode(resultFile.readAsStringSync()) as Map<String, dynamic>;
+          container = jsonDecode(containerFile.readAsStringSync())
+              as Map<String, dynamic>;
+
+          await _attachDirectoryFiles(resultsDir);
+        },
+      );
+
+      await step('Verify after-fixture metadata stays local', (_) async {
+        final afters = container['afters'] as List<dynamic>;
+        await _verifyValue(
+          'Verify container has exactly one after fixture',
+          expected: 1,
+          actual: afters.length,
+        );
+        final afterFixture = afters.single as Map<String, dynamic>;
+        await _verifyValue(
+          'Verify after-fixture description is recorded on the fixture',
+          expected: 'after fixture notes',
+          actual: afterFixture['description'],
+        );
+        await _verifyContains(
+          'Verify after-fixture parameter is recorded on the fixture',
+          expectedValue: const AllureParameter(
+            name: 'cleanupTarget',
+            value: 'cache',
+          ).toJson(),
+          actualValues: afterFixture['parameters'] as List<dynamic>,
+        );
+        await _verifyValue(
+          'Verify container description stays unset '
+          '(only before fixtures propagate to the scope)',
+          expected: null,
+          actual: container['description'],
+        );
+        await _verifyValue(
+          'Verify linked test description stays unset',
+          expected: null,
+          actual: result['description'],
+        );
+        await _verifyNotContains(
+          'Verify after-fixture parameter did not leak onto the linked test',
+          unexpectedValue: const AllureParameter(
+            name: 'cleanupTarget',
+            value: 'cache',
+          ).toJson(),
+          actualValues: result['parameters'] as List<dynamic>,
+        );
+        await _verifyNotContains(
+          'Verify after-fixture label did not leak onto the linked test',
+          unexpectedValue:
+              const AllureLabel(name: 'owner', value: 'team-x').toJson(),
+          actualValues: result['labels'] as List<dynamic>,
+        );
+      });
+    });
+
     test('notifies lifecycle listeners without aborting operations', () async {
       await description('''
 Verifies that lifecycle listeners can observe and mutate mutable lifecycle state, and that listener failures are isolated from reporting operations.
@@ -674,14 +999,19 @@ The result should not reference an attachment until the producer has fully writt
       });
     });
 
-    test('degrades invalid test plans to unavailable plans', () async {
+    test('parses valid empty plans and ignores unavailable test plans',
+        () async {
       await description('''
-Verifies that malformed, unsupported, and missing Allure test plans do not fail the process.
+Verifies that a valid version 1.0 plan with an empty `tests` list selects no tests,
+while malformed, unsupported, versionless, and missing Allure test plans do not fail
+the process.
 
-The parser should warn and return `null` so callers can continue without filtering when the plan cannot be trusted.
+The parser should return an empty `TestPlanV1` for the valid empty plan. It should
+warn and return `null` so callers can continue without filtering when a plan cannot
+be trusted, including when every declared entry is malformed.
 ''');
       final tempDir = await step(
-        'Create invalid test plan files',
+        'Create valid and unavailable test plan files',
         (_) async {
           final directory =
               await Directory.systemTemp.createTemp('allure_dart_testplan_');
@@ -691,6 +1021,17 @@ The parser should warn and return `null` so callers can continue without filteri
             }
           });
           await File(p.join(directory.path, 'invalid.json')).writeAsString('{');
+          await File(p.join(directory.path, 'empty.json')).writeAsString(
+            jsonEncode(<String, Object?>{
+              'version': '1.0',
+              'tests': <Object?>[],
+            }),
+          );
+          await File(p.join(directory.path, 'versionless.json')).writeAsString(
+            jsonEncode(<String, Object?>{
+              'tests': <Object?>[],
+            }),
+          );
           await File(p.join(directory.path, 'unsupported.json')).writeAsString(
             jsonEncode(<String, Object?>{
               'version': '2.0',
@@ -711,9 +1052,19 @@ The parser should warn and return `null` so callers can continue without filteri
         },
       );
 
-      await step('Verify invalid test plans are ignored', (_) {
+      await step('Verify valid empty plan selects no tests', (_) {
+        final plan = parseTestPlan(
+          <String, String>{
+            'ALLURE_TESTPLAN_PATH': p.join(tempDir.path, 'empty.json'),
+          },
+        );
+        expect(plan, isA<TestPlanV1>());
+        expect(plan!.tests, isEmpty);
+      });
+
+      await step('Verify unavailable test plans are ignored', (_) {
         expect(
-          adapter_support.parseTestPlan(
+          parseTestPlan(
             <String, String>{
               'ALLURE_TESTPLAN_PATH': p.join(tempDir.path, 'missing.json'),
             },
@@ -721,7 +1072,15 @@ The parser should warn and return `null` so callers can continue without filteri
           isNull,
         );
         expect(
-          adapter_support.parseTestPlan(
+          parseTestPlan(
+            <String, String>{
+              'ALLURE_TESTPLAN_PATH': p.join(tempDir.path, 'versionless.json'),
+            },
+          ),
+          isNull,
+        );
+        expect(
+          parseTestPlan(
             <String, String>{
               'ALLURE_TESTPLAN_PATH': p.join(tempDir.path, 'invalid.json'),
             },
@@ -729,7 +1088,7 @@ The parser should warn and return `null` so callers can continue without filteri
           isNull,
         );
         expect(
-          adapter_support.parseTestPlan(
+          parseTestPlan(
             <String, String>{
               'ALLURE_TESTPLAN_PATH': p.join(
                 tempDir.path,
@@ -740,7 +1099,7 @@ The parser should warn and return `null` so callers can continue without filteri
           isNull,
         );
         expect(
-          adapter_support.parseTestPlan(
+          parseTestPlan(
             <String, String>{
               'ALLURE_TESTPLAN_PATH': p.join(
                 tempDir.path,
@@ -918,6 +1277,23 @@ Future<void> _verifyContains(
           expectedMatcher.matches(actualValue, <Object?, Object?>{}),
     );
     expect(found, isTrue);
+  });
+}
+
+Future<void> _verifyNotContains(
+  String name, {
+  required Object? unexpectedValue,
+  required List<dynamic> actualValues,
+}) {
+  return step(name, (check) async {
+    await check.parameter('unexpected', unexpectedValue);
+    await check.parameter('actual', actualValues);
+    final unexpectedMatcher = equals(unexpectedValue);
+    final found = actualValues.any(
+      (actualValue) =>
+          unexpectedMatcher.matches(actualValue, <Object?, Object?>{}),
+    );
+    expect(found, isFalse);
   });
 }
 

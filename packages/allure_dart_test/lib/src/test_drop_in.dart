@@ -4,6 +4,7 @@ import 'dart:async';
 
 import 'package:test/test.dart' as t;
 
+import 'package_test_declaration.dart';
 import 'package_test_registry.dart';
 import 'package_test_support.dart';
 import 'runtime_plugin.dart';
@@ -26,39 +27,25 @@ void test(
   @Deprecated('Debug only') bool solo = false,
 }) {
   _ensureAllureInstalled();
-  final packagePath = resolvePackageTestPathFromDeclaration(
+  final prepared = preparePackageTestDeclaration(
+    description: description,
+    skip: skip,
+    tags: tags,
     locationUri: location?.uri,
     stackTrace: StackTrace.current,
   );
-  final groupPath = PackageTestScopeRegistry.instance.currentPath;
-  PackageTestScopeRegistry.instance.registerTest(packagePath: packagePath);
-  final declaredMetadata = buildPackageTestMetadata(
-    rawName: description?.toString() ?? '',
-    rawTags: normalizePackageTestTags(tags),
-    groupPath: groupPath,
-    packagePath: packagePath,
-    skipped: skip != null && skip != false,
-  );
-  PackageTestScopeRegistry.instance.registerMetadata(declaredMetadata);
-  Object? effectiveSkip = skip;
-  final testPlan = parseTestPlan();
-  if (testPlan != null &&
-      !includedInTestPlan(
-        testPlan,
-        id: declaredMetadata.externalId,
-        fullName: declaredMetadata.fullName,
-        nativeSelector: declaredMetadata.nativeSelector,
-        tags: declaredMetadata.rawTags,
-      ) &&
-      (skip == null || skip == false)) {
-    effectiveSkip = 'Excluded by Allure test plan';
+
+  FutureOr<dynamic> Function() effectiveBody = body;
+  if (prepared.shouldRuntimeSkip) {
+    effectiveBody = () => t.markTestSkipped(prepared.runtimeSkipReason);
   }
+
   t.test(
     description,
-    body,
+    effectiveBody,
     testOn: testOn,
     timeout: timeout,
-    skip: effectiveSkip,
+    skip: prepared.declarationSkip,
     tags: tags,
     onPlatform: onPlatform,
     retry: retry,
@@ -81,14 +68,11 @@ void group(
   @Deprecated('Debug only') bool solo = false,
 }) {
   _ensureAllureInstalled();
-  final name = description?.toString() ?? '';
-  final packagePath = resolvePackageTestPathFromDeclaration(
+  pushDeclaredPackageTestGroup(
+    description: description,
+    skip: skip,
     locationUri: location?.uri,
     stackTrace: StackTrace.current,
-  );
-  PackageTestScopeRegistry.instance.pushGroup(
-    name,
-    packagePath: packagePath,
   );
   t.group(
     description,
@@ -101,7 +85,6 @@ void group(
     },
     testOn: testOn,
     timeout: timeout,
-    skip: skip,
     tags: tags,
     onPlatform: onPlatform,
     retry: retry,

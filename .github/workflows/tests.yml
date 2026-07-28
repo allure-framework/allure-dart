@@ -28,10 +28,12 @@ jobs:
             os: ubuntu-latest
             allure-env: ubuntu-dart-stable
             dump-name: allure-results-test-ubuntu
+            chrome-smoke: true
           - name: Windows
             os: windows-latest
             allure-env: windows-dart-stable
             dump-name: allure-results-test-windows
+            chrome-smoke: false
     env:
       ALLURE_MATRIX_ENV: ${{ matrix.allure-env }}
       ALLURE_TEST_DUMP_NAME: ${{ matrix.dump-name }}
@@ -61,8 +63,28 @@ jobs:
         working-directory: packages/allure_flutter_test
         run: flutter pub get
 
+      - name: Browser compile smoke
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: >
+          dart compile js scripts/browser_compile_smoke.dart
+          -o "${RUNNER_TEMP}/allure_commons_browser_smoke.js"
+
+      - name: Set up Chrome
+        id: setup-chrome
+        if: ${{ !cancelled() && matrix.chrome-smoke }}
+        uses: browser-actions/setup-chrome@v2
+
+      - name: Browser Chrome smoke
+        if: ${{ !cancelled() && matrix.chrome-smoke }}
+        working-directory: packages/allure_dart_commons
+        shell: bash
+        env:
+          CHROME_EXECUTABLE: ${{ steps.setup-chrome.outputs.chrome-path }}
+        run: dart test -p chrome test/platform_support_test.dart
+
       - name: Run commons tests with Allure
-        if: always()
+        if: ${{ !cancelled() }}
         working-directory: packages/allure_dart_commons
         shell: bash
         run: >
@@ -74,7 +96,7 @@ jobs:
           -- dart test
 
       - name: Run package:test adapter tests with Allure
-        if: always()
+        if: ${{ !cancelled() }}
         working-directory: packages/allure_dart_test
         shell: bash
         run: >
@@ -86,7 +108,7 @@ jobs:
           -- dart test
 
       - name: Run Flutter adapter tests with Allure
-        if: always()
+        if: ${{ !cancelled() }}
         working-directory: packages/allure_flutter_test
         shell: bash
         run: >
@@ -98,8 +120,8 @@ jobs:
           -- flutter test test
 
       - name: Upload Allure test dumps
-        if: always()
-        uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: ${{ env.ALLURE_TEST_DUMP_NAME }}
           path: ./packages/**/${{ env.ALLURE_TEST_DUMP_NAME }}-*.zip
@@ -108,7 +130,7 @@ jobs:
     needs: [build]
     name: Build report
     runs-on: ubuntu-latest
-    if: always()
+    if: ${{ !cancelled() }}
     permissions:
       contents: read
       pull-requests: write

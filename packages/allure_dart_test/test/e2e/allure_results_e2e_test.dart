@@ -189,6 +189,27 @@ void main() {
       });
     });
 
+    test('writes broken status for a non-assertion error', () async {
+      final run = await _runSample(sampleName: 'broken_sample.dart');
+
+      await harnessStep(
+          'Verify a thrown non-assertion error resolves to broken status', () {
+        expect(run.exitCode, isNonZero,
+            reason: 'sample must fail\n${run.output}');
+        expect(run.resultFiles, hasLength(1));
+
+        final result = run.results.single;
+        _expectBaseResultFields(result, expectedName: 'broken sample');
+
+        expect(result['status'], 'broken');
+        expect(
+          (result['statusDetails'] as Map<String, dynamic>)['message']
+              as String,
+          contains('boom'),
+        );
+      });
+    });
+
     test('keeps duplicate allureTest names unique across groups', () async {
       final run = await _runSample(sampleName: 'duplicate_name_sample.dart');
 
@@ -283,12 +304,39 @@ void main() {
       });
     });
 
+    test('records a retry parameter on the retried attempt', () async {
+      final run =
+          await _runSample(sampleName: 'retry_always_fails_sample.dart');
+
+      await harnessStep(
+          'Verify a retried allureTest result carries the retry parameter', () {
+        expect(run.exitCode, isNonZero,
+            reason: 'sample always fails\n${run.output}');
+        // package:test with retry: 1 runs the test up to twice; each
+        // attempt is reported as its own Allure result.
+        expect(run.resultFiles, hasLength(2));
+        for (final result in run.results) {
+          expect(result['status'], 'failed');
+        }
+
+        final retryParameters = run.results
+            .expand((result) => (result['parameters'] as List<dynamic>)
+                .cast<Map<String, dynamic>>())
+            .where((parameter) => parameter['name'] == 'retry')
+            .toList();
+
+        expect(retryParameters, hasLength(1),
+            reason: 'exactly the retried attempt should carry retry=1');
+        expect(retryParameters.single['value'], '1');
+      });
+    });
+
     test('skips allureTest excluded by test plan before the body runs',
         () async {
       final run = await _runSample(
         sampleName: 'allure_test_plan_sample.dart',
         testPlanContents:
-            '{"tests":[{"selector":"test/sample_test.dart#selected elsewhere"}]}',
+            '{"version":"1.0","tests":[{"selector":"test/sample_test.dart#selected elsewhere"}]}',
       );
 
       await harnessStep(

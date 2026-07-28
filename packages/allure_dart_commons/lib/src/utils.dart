@@ -1,11 +1,11 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:crypto/crypto.dart';
 import 'package:mime/mime.dart';
 import 'package:path/path.dart' as p;
 
 import 'model.dart';
+import 'platform.dart';
 
 /// Label name used to mark tests excluded by an Allure test plan.
 const String allureTestPlanSkipLabel = 'ALLURE_TESTPLAN_SKIP';
@@ -80,11 +80,14 @@ AllureStatus getStatusFromError(Object error, [StackTrace? stackTrace]) {
         value.contains('testfailure');
   }
 
+  // Match `package:test/` and `package:matcher/`, but not `package:test_api/`
+  // which appears on stacks for every framework-mediated throw (including
+  // unexpected non-assertion errors that must stay `broken`).
   if (containsAssertionSignal(typeName) ||
       containsAssertionSignal(message) ||
       message.contains('expected:') ||
-      trace.contains('package:matcher') ||
-      trace.contains('package:test') ||
+      trace.contains('package:matcher/') ||
+      trace.contains('package:test/') ||
       _hasDynamicField(error, 'matcherResult') ||
       _hasDynamicField(error, 'actual') ||
       _hasDynamicField(error, 'expected')) {
@@ -180,9 +183,26 @@ void ensureSuiteLabels(AllureTestResult test, List<String> defaultSuites) {
   test.labels.addAll(getSuiteLabels(defaultSuites));
 }
 
+/// Adapter-generated labels that should appear at most once on a result.
+///
+/// Env (`ALLURE_LABEL_*`) and config global labels are applied after these
+/// automatic values, so the last occurrence wins when collapsing. Matches the
+/// normative adapter-generated set (`framework`, `language`, `host`,
+/// `thread`, `package`, `testClass`, `testMethod`). Multi-value labels such
+/// as `tag` are intentionally excluded.
+const Set<String> singletonAutomaticLabelNames = <String>{
+  'framework',
+  'language',
+  'host',
+  'thread',
+  'package',
+  'testClass',
+  'testMethod',
+};
+
 /// Converts `ALLURE_LABEL_*` environment variables to Allure labels.
 List<AllureLabel> getEnvironmentLabels([Map<String, String>? environment]) {
-  final source = environment ?? Platform.environment;
+  final source = environment ?? allureEnvironment;
   final labels = <AllureLabel>[];
   for (final entry in source.entries) {
     if (!entry.key.startsWith('ALLURE_LABEL_')) {
@@ -197,15 +217,62 @@ List<AllureLabel> getEnvironmentLabels([Map<String, String>? environment]) {
   return labels;
 }
 
+/// Keeps the last value for [singletonAutomaticLabelNames], leaves others.
+///
+/// Used so `ALLURE_LABEL_*` / config overrides replace automatic adapter
+/// labels (e.g. `host`, `framework`) instead of leaving two conflicting
+/// values. Other label names may still repeat with different values.
+List<AllureLabel> collapseSingletonLabels(Iterable<AllureLabel> labels) {
+  final list = labels.toList(growable: false);
+  final lastIndexByName = <String, int>{};
+  for (var index = 0; index < list.length; index++) {
+    final name = list[index].name;
+    if (singletonAutomaticLabelNames.contains(name)) {
+      lastIndexByName[name] = index;
+    }
+  }
+  if (lastIndexByName.isEmpty) {
+    return list;
+  }
+  return <AllureLabel>[
+    for (var index = 0; index < list.length; index++)
+      if (!lastIndexByName.containsKey(list[index].name) ||
+          lastIndexByName[list[index].name] == index)
+        list[index],
+  ];
+}
+
 /// Returns the host label for the current machine.
-AllureLabel getHostLabel() =>
-    AllureLabel(name: 'host', value: Platform.localHostname);
+///
+/// When `ALLURE_LABEL_host` is set, that value is used so adapters that call
+/// this helper do not invent a conflicting automatic hostname.
+AllureLabel getHostLabel([Map<String, String>? environment]) {
+  final source = environment ?? allureEnvironment;
+  final override = source['ALLURE_LABEL_host'];
+  if (override != null && override.isNotEmpty) {
+    return AllureLabel(name: 'host', value: override);
+  }
+  return AllureLabel(name: 'host', value: allureLocalHostname);
+}
 
 /// Returns a thread label using [threadId] or the current process id.
-AllureLabel getThreadLabel([String? threadId]) => AllureLabel(
-      name: 'thread',
-      value: threadId ?? 'pid-$pid',
-    );
+///
+/// When `ALLURE_LABEL_thread` is set and [threadId] is omitted, that value
+/// overrides the automatic `pid-*` label.
+AllureLabel getThreadLabel([
+  String? threadId,
+  Map<String, String>? environment,
+]) {
+  if (threadId != null) {
+    return AllureLabel(name: 'thread', value: threadId);
+  }
+  final source = environment ?? allureEnvironment;
+  final override = source['ALLURE_LABEL_thread'];
+  if (override != null && override.isNotEmpty) {
+    return AllureLabel(name: 'thread', value: override);
+  }
+  return AllureLabel(name: 'thread', value: allureProcessThreadId);
+}
 
 /// Returns a package label with [filepath] relative to the current directory.
 AllureLabel getPackageLabel(String filepath) =>
@@ -221,7 +288,7 @@ AllureLabel getFrameworkLabel(String framework) =>
 
 /// Returns [filepath] relative to the current directory using POSIX separators.
 String getRelativePath(String filepath) {
-  final current = Directory.current.path;
+  final current = allureCurrentDirectory;
   final relative = p.relative(filepath, from: current);
   return getPosixPath(relative);
 }

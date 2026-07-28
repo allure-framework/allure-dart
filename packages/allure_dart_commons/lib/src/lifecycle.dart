@@ -1,11 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:uuid/uuid.dart';
 
 import 'config.dart';
 import 'model.dart';
+import 'platform.dart';
 import 'runtime.dart';
 import 'utils.dart';
 import 'writer.dart';
@@ -297,7 +297,11 @@ class AllureLifecycle implements AllureRuntimeMessageSink {
     _mergeScopeMetadata(state);
     _applyAutomaticTestLabels(result);
     ensureSuiteLabels(result, state.defaultSuites);
-    final dedupedLabels = _dedupeLabels(result.labels);
+    // Exact name+value dedupe first, then collapse singleton automatic
+    // labels (framework/language/host/thread/package/testClass/testMethod)
+    // so env/config overrides replace adapter defaults instead of leaving
+    // two conflicting values (#12 and same-class overrides).
+    final dedupedLabels = collapseSingletonLabels(_dedupeLabels(result.labels));
     result.labels
       ..clear()
       ..addAll(dedupedLabels);
@@ -1013,7 +1017,7 @@ class AllureLifecycle implements AllureRuntimeMessageSink {
       try {
         callback(listener);
       } catch (error, stackTrace) {
-        stderr.writeln(
+        allureLogWarning(
           'Allure lifecycle listener failed in $hook: $error\n$stackTrace',
         );
       }

@@ -240,11 +240,47 @@ drop-in `test`, `group`, and `testWidgets` wrappers skip tests that are not in
 the plan. Suites that use `installAllure()` with the original framework imports
 still run the test and mark it with the `ALLURE_TESTPLAN_SKIP` label.
 
+Plans must declare `"version": "1.0"`. A valid empty `"tests": []` plan selects
+no tests. Missing or unsupported versions are ignored (no filtering).
+
 ```bash
 ALLURE_TESTPLAN_PATH=testplan.json dart test
 ```
 
 Entries can match by Allure ID or by the test selector produced by the adapter.
+
+> **Skip vs. test plans:** a plain declaration `skip: true` is a different
+> mechanism from test-plan exclusion, and it behaves differently depending on
+> whether a suite uses the drop-in import or plain `installAllure()` with the
+> original framework imports. See the "Skip Semantics" notes in the
+> [`allure_dart_test`](packages/allure_dart_test/README.md#skip-semantics) and
+> [`allure_flutter_test`](packages/allure_flutter_test/README.md#skip-semantics)
+> READMEs for the exact tradeoffs, including the drop-in group-skip fixture
+> tradeoff.
+
+## Browser Support
+
+`allure_dart_commons` can load on browser platforms without accessing
+`Platform.environment`. Environment labels use an empty environment map, and
+automatic host and thread labels use browser-safe values.
+
+Writing `allure-results`, reading config files, and reading test plans require
+local filesystem access. Browser calls that write results fail with a clear
+Allure filesystem error. Pass explicit environment values where needed, or run
+result-producing tests on a VM or desktop platform.
+
+Compile the browser smoke entry point with:
+
+```bash
+dart compile js scripts/browser_compile_smoke.dart -o /tmp/allure_commons.js
+```
+
+Run the commons platform smoke in Chrome (requires a local Chrome binary):
+
+```bash
+cd packages/allure_dart_commons
+dart test -p chrome test/platform_support_test.dart
+```
 
 ## Advanced Runtime And Lifecycle APIs
 

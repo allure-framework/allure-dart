@@ -1,9 +1,8 @@
-import 'dart:io';
-
-import 'package:path/path.dart' as p;
 import 'package:yaml/yaml.dart';
 
+import 'config_loader.dart';
 import 'model.dart';
+import 'platform.dart';
 
 /// Environment variable that points to an explicit Allure config file.
 const String allureConfigEnvironmentVariable = 'ALLURE_CONFIG';
@@ -43,7 +42,7 @@ class AllureConfig {
   /// Loads an Allure config file.
   ///
   /// If [path] or `ALLURE_CONFIG` is set, that exact file is read. Otherwise
-  /// the loader searches from [startDirectory] or [Directory.current] upward
+  /// the loader searches from [startDirectory] or the current directory upward
   /// for `allure-dart.yaml` and then `allure-dart.yml`, stopping at the nearest
   /// `pubspec.yaml` after that directory has been checked.
   factory AllureConfig.load({
@@ -51,67 +50,34 @@ class AllureConfig {
     String? startDirectory,
     Map<String, String>? environment,
   }) {
-    final env = environment ?? Platform.environment;
+    final env = environment ?? allureEnvironment;
     final explicitPath = path ?? env[allureConfigEnvironmentVariable];
-    final baseDirectory = startDirectory ?? Directory.current.path;
-    final file = explicitPath == null || explicitPath.isEmpty
-        ? _findConfigFile(baseDirectory)
-        : File(p.isAbsolute(explicitPath)
-            ? explicitPath
-            : p.join(baseDirectory, explicitPath));
-
-    if (file == null) {
-      return empty;
-    }
-    return _loadFromFile(file);
-  }
-
-  static AllureConfig _loadFromFile(File file) {
-    if (!file.existsSync()) {
-      throw FileSystemException('Allure config file does not exist', file.path);
-    }
-
-    final loaded = loadYaml(file.readAsStringSync(), sourceUrl: file.uri);
-    if (loaded == null) {
-      return AllureConfig(path: file.path);
-    }
-    if (loaded is! YamlMap) {
-      throw FormatException('Allure config must be a YAML map', file.path);
-    }
-
-    return AllureConfig(
-      resultsDirectory: _stringValue(
-        loaded['resultsDir'] ?? loaded['resultsDirectory'],
-      ),
-      globalLabels: _parseLabels(loaded['labels']),
-      environmentInfo: _parseEnvironmentInfo(loaded['environment']),
-      path: file.path,
+    final baseDirectory = startDirectory ?? allureCurrentDirectory;
+    return loadConfigFromFilesystem(
+      explicitPath: explicitPath,
+      baseDirectory: baseDirectory,
     );
   }
 }
 
-File? _findConfigFile(String startDirectory) {
-  var directory = p.normalize(p.absolute(startDirectory));
-  if (FileSystemEntity.isFileSync(directory)) {
-    directory = p.dirname(directory);
+/// Parses an Allure config file body loaded from [path].
+AllureConfig parseAllureConfig(String contents, {required String path}) {
+  final loaded = loadYaml(contents, sourceUrl: Uri.file(path));
+  if (loaded == null) {
+    return AllureConfig(path: path);
+  }
+  if (loaded is! YamlMap) {
+    throw FormatException('Allure config must be a YAML map', path);
   }
 
-  while (true) {
-    for (final fileName in allureConfigFileNames) {
-      final file = File(p.join(directory, fileName));
-      if (file.existsSync()) {
-        return file;
-      }
-    }
-    if (File(p.join(directory, 'pubspec.yaml')).existsSync()) {
-      return null;
-    }
-    final parent = p.dirname(directory);
-    if (parent == directory) {
-      return null;
-    }
-    directory = parent;
-  }
+  return AllureConfig(
+    resultsDirectory: _stringValue(
+      loaded['resultsDir'] ?? loaded['resultsDirectory'],
+    ),
+    globalLabels: _parseLabels(loaded['labels']),
+    environmentInfo: _parseEnvironmentInfo(loaded['environment']),
+    path: path,
+  );
 }
 
 List<AllureLabel> _parseLabels(Object? value) {

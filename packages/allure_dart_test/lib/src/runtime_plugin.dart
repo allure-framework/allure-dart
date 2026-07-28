@@ -37,13 +37,45 @@ class AllureTestRuntimePlugin {
     AllureLifecycle? lifecycle,
     FrameworkLabelResolver? frameworkLabelResolver,
   }) {
-    final plugin = _installedPlugin ??
-        AllureTestRuntimePlugin(
-          lifecycle: lifecycle,
-          frameworkLabelResolver: frameworkLabelResolver,
-        );
+    final existing = _installedPlugin;
+    if (existing != null) {
+      existing._checkCompatibleConfig(
+        lifecycle: lifecycle,
+        frameworkLabelResolver: frameworkLabelResolver,
+      );
+      existing.install();
+      return existing;
+    }
+
+    final plugin = AllureTestRuntimePlugin(
+      lifecycle: lifecycle,
+      frameworkLabelResolver: frameworkLabelResolver,
+    );
     plugin.install();
     return plugin;
+  }
+
+  /// Throws a [StateError] if [lifecycle] or [frameworkLabelResolver] is
+  /// non-null and differs from what this already-installed plugin was
+  /// configured with. A `null` argument means "keep the installed
+  /// configuration" and is always compatible.
+  void _checkCompatibleConfig({
+    AllureLifecycle? lifecycle,
+    FrameworkLabelResolver? frameworkLabelResolver,
+  }) {
+    final hasDifferentLifecycle =
+        lifecycle != null && !identical(lifecycle, _lifecycle);
+    final hasDifferentResolver = frameworkLabelResolver != null &&
+        !identical(frameworkLabelResolver, _frameworkLabelResolver);
+    if (hasDifferentLifecycle || hasDifferentResolver) {
+      throw StateError(
+        'Allure runtime plugin is already installed with a different '
+        'lifecycle or frameworkLabelResolver. Reuse '
+        'AllureTestRuntimePlugin.ensureInstalled() with the same '
+        'configuration (or omit lifecycle/frameworkLabelResolver) instead '
+        'of installing a second, differently configured instance.',
+      );
+    }
   }
 
   /// Installs lifecycle hooks into `package:test`.
@@ -51,11 +83,16 @@ class AllureTestRuntimePlugin {
     if (identical(_installedPlugin, this)) {
       return;
     }
-    if (_installedPlugin != null) {
+    final existing = _installedPlugin;
+    if (existing != null) {
+      existing._checkCompatibleConfig(
+        lifecycle: _lifecycle,
+        frameworkLabelResolver: _frameworkLabelResolver,
+      );
       setGlobalTestRuntime(
         MessageTestRuntime(
-          sink: _installedPlugin!._lifecycle,
-          contextResolver: _installedPlugin!.currentExecutionContext,
+          sink: existing._lifecycle,
+          contextResolver: existing.currentExecutionContext,
         ),
       );
       return;
@@ -279,7 +316,10 @@ class AllureTestRuntimePlugin {
 
   void _scheduleCurrentTestIfNeeded() {
     final resolved = _resolveCurrentTest();
-    if (resolved == null || resolved.uuid != null) {
+    // Empty string is used as a sentinel after finish so retries can schedule
+    // a fresh Allure result for the same package:test descriptor.
+    if (resolved == null ||
+        (resolved.uuid != null && resolved.uuid!.isNotEmpty)) {
       return;
     }
 
@@ -301,15 +341,16 @@ class AllureTestRuntimePlugin {
         ),
       );
     }
-    for (var index = 0; index < metadata.groupPath.length; index++) {
-      final path = metadata.groupPath.take(index + 1).toList();
-      final scopeId = buildPackageTestScopeId(metadata.packagePath, path);
+    final groupPath = <String>[];
+    for (final segment in metadata.groupPath) {
+      groupPath.add(segment);
+      final scopeId = buildPackageTestScopeId(metadata.packagePath, groupPath);
       groupScopeIds.add(
         _lifecycle.ensureScope(
           id: scopeId,
-          name: path.last,
+          name: groupPath.last,
           expectedChildrenCount: registry.expectedChildrenForPath(
-            path,
+            groupPath,
             packagePath: metadata.packagePath,
           ),
         ),
@@ -341,14 +382,18 @@ class AllureTestRuntimePlugin {
       ),
     ];
 
-    if (_testPlan != null &&
+    final excludedByTestPlan = _testPlan != null &&
         !includedInTestPlan(
           _testPlan,
           id: metadata.externalId,
           fullName: metadata.fullName,
           nativeSelector: metadata.nativeSelector,
           tags: metadata.rawTags,
-        )) {
+        );
+    if (excludedByTestPlan) {
+      // Plain installAllure() cannot declaration-skip package:test bodies; the
+      // skip label only suppresses the Allure result. Use the drop-in wrappers
+      // when excluded bodies must not run.
       addSkipLabel(labels);
     }
 
@@ -362,7 +407,9 @@ class AllureTestRuntimePlugin {
       parameters: metadata.parameters,
       scopeIds: scopeIds,
       defaultSuites: metadata.groupPath,
-      stage: metadata.skipped ? AllureStage.pending : AllureStage.running,
+      stage: metadata.skipped || excludedByTestPlan
+          ? AllureStage.pending
+          : AllureStage.running,
     );
 
     _uuidByTest[resolved.test] = testUuid;
