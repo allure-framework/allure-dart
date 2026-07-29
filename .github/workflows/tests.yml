@@ -59,13 +59,27 @@ jobs:
         working-directory: packages/allure_flutter_test
         run: flutter analyze --no-fatal-infos
 
+  publish-dry-run:
+    name: Publish dry-run
+    runs-on: ubuntu-latest
+    env:
+      DART_SUPPRESS_ANALYTICS: 'true'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7.0.1
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
       - name: Publish dry-run
         run: bash scripts/publish-dry-run.sh
 
   build:
     name: Build (${{ matrix.name }})
     runs-on: ${{ matrix.os }}
-    needs: [quality]
+    needs: [quality, publish-dry-run]
     strategy:
       fail-fast: false
       matrix:
