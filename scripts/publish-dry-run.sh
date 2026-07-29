@@ -1,16 +1,14 @@
 #!/usr/bin/env bash
 # Validate that packages can be published to pub.dev.
 # Fails on pub publish warnings (for example unconstrained dependencies).
+#
+# Flutter dry-run uses local path overrides for sibling packages. Those
+# overrides are pubignored and are required when dependency versions are
+# bumped in-repo before they exist on pub.dev.
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${root}"
-
-overrides="${root}/packages/allure_flutter_test/pubspec_overrides.yaml"
-if [[ -f "${overrides}" ]]; then
-  echo "==> removing Flutter workspace overrides for publish dry-run"
-  rm -f "${overrides}"
-fi
 
 echo "==> dart pub get (workspace)"
 dart pub get
@@ -22,6 +20,9 @@ for package in allure_dart_commons allure_dart_test; do
     dart pub publish --dry-run
   )
 done
+
+echo "==> flutter workspace overrides for Flutter dry-run"
+bash scripts/setup-flutter-workspace.sh
 
 echo "==> flutter pub get (allure_flutter_test)"
 (

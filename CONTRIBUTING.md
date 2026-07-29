@@ -62,8 +62,9 @@ Before a release, also validate pub.dev packaging:
 bash scripts/publish-dry-run.sh
 ```
 
-CI runs that dry-run on every pull request so unconstrained dependencies and
-similar publish blockers fail before tagging.
+CI runs that as a dedicated **Publish dry-run** job on pull requests and on
+`main`, so unconstrained dependencies and similar publish blockers fail before
+tagging.
 
 ## Running Tests
 
