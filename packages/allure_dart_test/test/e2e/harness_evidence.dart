@@ -114,8 +114,8 @@ Future<PreparedTestProject> prepareTestProject({
       sampleFile,
       ...additionalSampleFiles.values,
       pubspecFile,
-      if (allureConfigFile != null) allureConfigFile,
-      if (testPlanFile != null) testPlanFile,
+      ?allureConfigFile,
+      ?testPlanFile,
     ]) {
       await attachFile(file, relativeTo: tempDir);
     }

@@ -18,6 +18,7 @@
 /// The command above is expected to exit non-zero, and the generated
 /// `allure-results/*-result.json` for "intentionally fails" is expected to
 /// have `"status": "failed"`.
+library;
 import 'package:allure_flutter_test/flutter_test.dart';
 
 void main() {
