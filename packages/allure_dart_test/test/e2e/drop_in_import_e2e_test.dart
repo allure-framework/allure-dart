@@ -380,6 +380,75 @@ void main() {
         },
       );
     });
+
+    test('reports fixture hook errors as global errors', () async {
+      final run = await _runDropInSample(
+        sampleName: 'fixture_error_sample.dart',
+      );
+
+      await harnessStep(
+        'Verify fixture setUp failure is recorded and also written as a global error',
+        () {
+          expect(
+            run.exitCode,
+            isNonZero,
+            reason: 'sample must fail\n${run.output}',
+          );
+
+          final fixtures = run.containers
+              .expand(
+                (container) => <dynamic>[
+                  ...(container['befores'] as List<dynamic>),
+                  ...(container['afters'] as List<dynamic>),
+                ],
+              )
+              .cast<Map<String, dynamic>>()
+              .toList();
+          final setUpFixtures = fixtures
+              .where((fixture) => fixture['name'] == 'setUp')
+              .toList();
+          expect(setUpFixtures, isNotEmpty);
+          expect(
+            setUpFixtures.any(
+              (fixture) =>
+                  (fixture['status'] == 'broken' ||
+                      fixture['status'] == 'failed') &&
+                  ((fixture['statusDetails']
+                                  as Map<String, dynamic>?)?['message']
+                              as String? ??
+                          '')
+                      .contains('fixture boom'),
+            ),
+            isTrue,
+            reason: 'expected a broken/failed setUp fixture with fixture boom',
+          );
+
+          final globalsFiles = run.producedFiles
+              .where((file) => file.path.endsWith('-globals.json'))
+              .toList();
+          expect(
+            globalsFiles,
+            isNotEmpty,
+            reason: 'fixture hook errors must produce *-globals.json',
+          );
+
+          final allErrors = globalsFiles.expand((file) {
+            final globals =
+                jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
+            return (globals['errors'] as List<dynamic>? ?? const [])
+                .cast<Map<String, dynamic>>();
+          }).toList();
+          expect(
+            allErrors.any(
+              (error) =>
+                  (error['message'] as String? ?? '').contains('fixture boom'),
+            ),
+            isTrue,
+            reason: 'globals errors must include fixture boom',
+          );
+        },
+      );
+    });
   });
 }
 
@@ -429,6 +498,8 @@ class _RunSampleResult {
   _RunSampleResult({
     required this.exitCode,
     required this.output,
+    required this.resultsDir,
+    required this.producedFiles,
     required this.resultFiles,
     required this.results,
     required this.containerFiles,
@@ -437,6 +508,8 @@ class _RunSampleResult {
 
   final int exitCode;
   final String output;
+  final Directory resultsDir;
+  final List<File> producedFiles;
   final List<File> resultFiles;
   final List<Map<String, dynamic>> results;
   final List<File> containerFiles;
@@ -533,6 +606,7 @@ dev_dependencies:
 
   final output = '${testRun.stdout}\n${testRun.stderr}';
 
+  final producedFiles = <File>[];
   final resultFiles = <File>[];
   final containerFiles = <File>[];
   final results = <Map<String, dynamic>>[];
@@ -540,14 +614,20 @@ dev_dependencies:
   await harnessStep(
     'Read produced Allure result and container JSON files for assertions',
     () async {
-      final files = listProducedFiles(project.resultsDir);
+      producedFiles
+        ..clear()
+        ..addAll(listProducedFiles(project.resultsDir));
       resultFiles
         ..clear()
-        ..addAll(files.where((file) => file.path.endsWith('-result.json')))
+        ..addAll(
+          producedFiles.where((file) => file.path.endsWith('-result.json')),
+        )
         ..sort((a, b) => a.path.compareTo(b.path));
       containerFiles
         ..clear()
-        ..addAll(files.where((file) => file.path.endsWith('-container.json')))
+        ..addAll(
+          producedFiles.where((file) => file.path.endsWith('-container.json')),
+        )
         ..sort((a, b) => a.path.compareTo(b.path));
       results
         ..clear()
@@ -571,6 +651,8 @@ dev_dependencies:
   return _RunSampleResult(
     exitCode: testRun.exitCode,
     output: output,
+    resultsDir: project.resultsDir,
+    producedFiles: producedFiles,
     resultFiles: resultFiles,
     results: results,
     containerFiles: containerFiles,
