@@ -117,7 +117,7 @@ PackageTestMetadata buildPackageTestMetadata({
     ...groupPath,
   ];
   final fullNameParts = <String>[
-    if (normalizedPackagePath != null) normalizedPackagePath,
+    ?normalizedPackagePath,
     ...groupPath,
     resolvedName,
   ];

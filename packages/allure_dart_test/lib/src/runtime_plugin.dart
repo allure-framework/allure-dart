@@ -352,7 +352,7 @@ class AllureTestRuntimePlugin {
           );
 
     final scopeIds = <String>[
-      if (fileScopeId != null) fileScopeId,
+      ?fileScopeId,
       ...groupScopeIds,
     ];
     final labels = <AllureLabel>[

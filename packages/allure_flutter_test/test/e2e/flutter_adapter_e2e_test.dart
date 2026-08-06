@@ -11,6 +11,7 @@
 /// This harness file itself uses the Flutter Allure drop-in import so its
 /// own assertions are modeled as Allure results/steps for agent-mode review
 /// of the harness run, not just the sampled subprocess runs.
+library;
 import 'dart:convert';
 import 'dart:io';
 
