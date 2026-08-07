@@ -6,6 +6,7 @@
 /// this file only applies to samples under `test/e2e/screenshot_samples/`
 /// and does not affect other e2e samples or `test/samples/`.
 library;
+
 import 'dart:async';
 
 import 'package:allure_flutter_test/allure_flutter_test.dart';

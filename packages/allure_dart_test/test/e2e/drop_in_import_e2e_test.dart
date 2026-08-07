@@ -438,13 +438,21 @@ void main() {
             return (globals['errors'] as List<dynamic>? ?? const [])
                 .cast<Map<String, dynamic>>();
           }).toList();
+          final matchingErrors = allErrors
+              .where(
+                (error) => (error['message'] as String? ?? '').contains(
+                  'setUp failed:',
+                ),
+              )
+              .toList();
+          expect(matchingErrors, hasLength(1));
           expect(
-            allErrors.any(
-              (error) =>
-                  (error['message'] as String? ?? '').contains('fixture boom'),
-            ),
-            isTrue,
-            reason: 'globals errors must include fixture boom',
+            matchingErrors.single['message'] as String,
+            contains('fixture boom'),
+          );
+          expect(
+            matchingErrors.single['trace'] as String?,
+            contains('sample_test.dart'),
           );
         },
       );

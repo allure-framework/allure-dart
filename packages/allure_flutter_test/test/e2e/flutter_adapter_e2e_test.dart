@@ -12,6 +12,7 @@
 /// own assertions are modeled as Allure results/steps for agent-mode review
 /// of the harness run, not just the sampled subprocess runs.
 library;
+
 import 'dart:convert';
 import 'dart:io';
 
