@@ -381,7 +381,224 @@ void main() {
         );
       },
     );
+
+    test('reports setUp fixture hook errors as global errors', () async {
+      final run = await _runFlutterSample(
+        'fixture_error_setup_widget_sample.dart',
+      );
+
+      await step(
+        'Verify setUp failure writes a broken fixture and one matching global error',
+        (_) async {
+          _expectFixtureHookGlobalError(
+            run,
+            hookName: 'setUp',
+            boomText: 'setUp boom',
+            sampleFileName: 'fixture_error_setup_widget_sample.dart',
+            expectBrokenFixture: true,
+          );
+        },
+      );
+    });
+
+    test('reports tearDown fixture hook errors as global errors', () async {
+      final run = await _runFlutterSample(
+        'fixture_error_teardown_widget_sample.dart',
+      );
+
+      await step(
+        'Verify tearDown failure writes a broken fixture and one matching global error',
+        (_) async {
+          _expectFixtureHookGlobalError(
+            run,
+            hookName: 'tearDown',
+            boomText: 'tearDown boom',
+            sampleFileName: 'fixture_error_teardown_widget_sample.dart',
+            expectBrokenFixture: true,
+          );
+        },
+      );
+    });
+
+    test('reports setUpAll fixture hook errors as global errors', () async {
+      final run = await _runFlutterSample(
+        'fixture_error_setup_all_widget_sample.dart',
+      );
+
+      await step(
+        'Verify setUpAll failure writes one matching global error without containers',
+        (_) async {
+          // flutter_test skips the suite after setUpAll fails, so no test
+          // children complete and Allure never flushes a fixture container.
+          expect(
+            run.containers,
+            isEmpty,
+            reason:
+                'setUpAll failure leaves the package scope without completed '
+                'children, so containers are not written\n${run.output}',
+          );
+          _expectFixtureHookGlobalError(
+            run,
+            hookName: 'setUpAll',
+            boomText: 'setUpAll boom',
+            sampleFileName: 'fixture_error_setup_all_widget_sample.dart',
+            expectBrokenFixture: false,
+          );
+        },
+      );
+    });
+
+    test('reports tearDownAll fixture hook errors as global errors', () async {
+      final run = await _runFlutterSample(
+        'fixture_error_teardown_all_widget_sample.dart',
+      );
+
+      await step(
+        'Verify tearDownAll failure writes a broken fixture and one matching global error',
+        (_) async {
+          _expectFixtureHookGlobalError(
+            run,
+            hookName: 'tearDownAll',
+            boomText: 'tearDownAll boom',
+            sampleFileName: 'fixture_error_teardown_all_widget_sample.dart',
+            expectBrokenFixture: true,
+          );
+        },
+      );
+    });
+
+    test(
+      'reports setUp TestFailure fixture hook errors as failed fixtures and global errors',
+      () async {
+        final run = await _runFlutterSample(
+          'fixture_error_setup_test_failure_widget_sample.dart',
+        );
+
+        await step(
+          'Verify setUp TestFailure writes a failed fixture and one matching global error',
+          (_) async {
+            _expectFixtureHookGlobalError(
+              run,
+              hookName: 'setUp',
+              boomText: 'setUp TestFailure boom',
+              sampleFileName:
+                  'fixture_error_setup_test_failure_widget_sample.dart',
+              expectBrokenFixture: true,
+              expectedFixtureStatus: 'failed',
+            );
+          },
+        );
+      },
+    );
+
+    test('reports async setUp fixture hook errors as global errors', () async {
+      final run = await _runFlutterSample(
+        'fixture_error_setup_async_widget_sample.dart',
+      );
+
+      await step(
+        'Verify async setUp failure writes a broken fixture and one matching global error',
+        (_) async {
+          _expectFixtureHookGlobalError(
+            run,
+            hookName: 'setUp',
+            boomText: 'async setUp boom',
+            sampleFileName: 'fixture_error_setup_async_widget_sample.dart',
+            expectBrokenFixture: true,
+          );
+        },
+      );
+    });
   });
+}
+
+/// Asserts a Flutter drop-in fixture hook failure exits non-zero, optionally
+/// records a broken/failed fixture of [hookName], and writes exactly one
+/// matching global error with prefix `{hookName} failed:` plus [boomText] and
+/// [sampleFileName] under `test/samples/` in the trace.
+void _expectFixtureHookGlobalError(
+  _FlutterSampleRun run, {
+  required String hookName,
+  required String boomText,
+  required String sampleFileName,
+  required bool expectBrokenFixture,
+  String? expectedFixtureStatus,
+}) {
+  expect(run.exitCode, isNot(0), reason: 'sample must fail\n${run.output}');
+
+  if (expectBrokenFixture) {
+    final fixtures = run.containers
+        .expand(
+          (container) => <dynamic>[
+            ...(container['befores'] as List<dynamic>),
+            ...(container['afters'] as List<dynamic>),
+          ],
+        )
+        .cast<Map<String, dynamic>>()
+        .toList();
+    final hookFixtures = fixtures
+        .where((fixture) => fixture['name'] == hookName)
+        .toList();
+    expect(
+      hookFixtures,
+      isNotEmpty,
+      reason: 'expected $hookName fixture in containers\n${run.output}',
+    );
+    final statusOk = expectedFixtureStatus == null
+        ? (Map<String, dynamic> fixture) =>
+              fixture['status'] == 'broken' || fixture['status'] == 'failed'
+        : (Map<String, dynamic> fixture) =>
+              fixture['status'] == expectedFixtureStatus;
+    expect(
+      hookFixtures.any(
+        (fixture) =>
+            statusOk(fixture) &&
+            ((fixture['statusDetails'] as Map<String, dynamic>?)?['message']
+                        as String? ??
+                    '')
+                .contains(boomText),
+      ),
+      isTrue,
+      reason:
+          'expected a '
+          '${expectedFixtureStatus ?? 'broken/failed'} $hookName fixture '
+          'containing $boomText\n${run.output}',
+    );
+  }
+
+  final globalsFiles = run.producedFiles
+      .where((file) => file.path.endsWith('-globals.json'))
+      .toList();
+  expect(
+    globalsFiles,
+    isNotEmpty,
+    reason: 'fixture hook errors must produce *-globals.json\n${run.output}',
+  );
+
+  final allErrors = globalsFiles.expand((file) {
+    final globals = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
+    return (globals['errors'] as List<dynamic>? ?? const [])
+        .cast<Map<String, dynamic>>();
+  }).toList();
+  final matchingErrors = allErrors
+      .where(
+        (error) =>
+            (error['message'] as String? ?? '').startsWith('$hookName failed:'),
+      )
+      .toList();
+  expect(
+    matchingErrors,
+    hasLength(1),
+    reason:
+        'expected exactly one global error starting with "$hookName failed:"\n'
+        'all errors: ${allErrors.map((error) => error['message']).toList()}\n'
+        '${run.output}',
+  );
+  expect(matchingErrors.single['message'] as String, contains(boomText));
+  expect(
+    matchingErrors.single['trace'] as String?,
+    contains('test/samples/$sampleFileName'),
+  );
 }
 
 /// Finds an attachment named [name] anywhere among a result's top-level
@@ -463,6 +680,7 @@ class _FlutterSampleRun {
     required this.exitCode,
     required this.output,
     required this.resultsDir,
+    required this.producedFiles,
     required this.resultFiles,
     required this.results,
     required this.containerFiles,
@@ -473,6 +691,7 @@ class _FlutterSampleRun {
   final int exitCode;
   final String output;
   final Directory resultsDir;
+  final List<File> producedFiles;
   final List<File> resultFiles;
   final List<Map<String, dynamic>> results;
   final List<File> containerFiles;
@@ -574,6 +793,7 @@ Future<_FlutterSampleRun> _runFlutterSamples(
     exitCode: process.exitCode,
     output: '${process.stdout}\n${process.stderr}',
     resultsDir: resultsDir,
+    producedFiles: producedFiles,
     resultFiles: resultFiles,
     results: results,
     containerFiles: containerFiles,
