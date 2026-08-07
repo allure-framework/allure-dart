@@ -7,6 +7,7 @@
 /// explicitly (together with `concurrency_alpha_widget_sample.dart`) by
 /// `test/e2e/flutter_adapter_e2e_test.dart`.
 library;
+
 import 'package:allure_flutter_test/flutter_test.dart';
 
 void main() {

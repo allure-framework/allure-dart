@@ -458,11 +458,6 @@ class AllureLifecycle implements AllureRuntimeMessageSink {
     scope.fixtures.add(
       _RecordedFixture(before: fixture.before, result: fixture.result),
     );
-    // Fixture/hook failures are also run-level global errors so reporters
-    // can surface them outside individual test results.
-    if (error != null) {
-      await writeGlobalError(fixture.result.statusDetails);
-    }
     await flushScopeIfComplete(fixture.scopeId);
   }
 
