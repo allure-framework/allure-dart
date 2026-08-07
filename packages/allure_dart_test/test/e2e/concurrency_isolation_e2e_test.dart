@@ -59,6 +59,50 @@ void main() {
         );
       },
     );
+
+    test(
+      'keeps concurrent setUp fixture hook globals isolated per suite',
+      () async {
+        final run = await _runConcurrentFixtureErrorSamples();
+
+        await harnessStep(
+          'Verify concurrent setUp failures emit both suite boom globals',
+          () {
+            expect(
+              run.exitCode,
+              isNonZero,
+              reason: 'samples must fail\n${run.output}',
+            );
+
+            final messages = run.globalErrors
+                .map((error) => error['message'] as String? ?? '')
+                .toList();
+            expect(
+              messages.where(
+                (message) =>
+                    message.startsWith('setUp failed:') &&
+                    message.contains('alpha setUp boom'),
+              ),
+              isNotEmpty,
+              reason:
+                  'missing alpha setUp global\nall errors: $messages\n'
+                  '${run.output}',
+            );
+            expect(
+              messages.where(
+                (message) =>
+                    message.startsWith('setUp failed:') &&
+                    message.contains('beta setUp boom'),
+              ),
+              isNotEmpty,
+              reason:
+                  'missing beta setUp global\nall errors: $messages\n'
+                  '${run.output}',
+            );
+          },
+        );
+      },
+    );
   });
 }
 
@@ -104,18 +148,45 @@ class _RunSampleResult {
     required this.exitCode,
     required this.output,
     required this.resultsDir,
+    required this.producedFiles,
     required this.resultFiles,
     required this.results,
+    required this.globalErrors,
   });
 
   final int exitCode;
   final String output;
   final Directory resultsDir;
+  final List<File> producedFiles;
   final List<File> resultFiles;
   final List<Map<String, dynamic>> results;
+  final List<Map<String, dynamic>> globalErrors;
 }
 
-Future<_RunSampleResult> _runConcurrentRuntimeSamples() async {
+Future<_RunSampleResult> _runConcurrentRuntimeSamples() {
+  return _runConcurrentSamples(
+    tempPrefix: 'allure_dart_concurrency_e2e_',
+    primarySampleName: 'alpha_sample.dart',
+    secondarySampleName: 'beta_sample.dart',
+    secondaryTestFileName: 'beta_concurrency_test.dart',
+  );
+}
+
+Future<_RunSampleResult> _runConcurrentFixtureErrorSamples() {
+  return _runConcurrentSamples(
+    tempPrefix: 'allure_dart_concurrency_fixture_error_e2e_',
+    primarySampleName: 'fixture_error_concurrent_alpha_sample.dart',
+    secondarySampleName: 'fixture_error_concurrent_beta_sample.dart',
+    secondaryTestFileName: 'beta_concurrency_test.dart',
+  );
+}
+
+Future<_RunSampleResult> _runConcurrentSamples({
+  required String tempPrefix,
+  required String primarySampleName,
+  required String secondarySampleName,
+  required String secondaryTestFileName,
+}) async {
   final repoRoot = Directory.current;
   final commonsRoot = p.normalize(
     p.join(repoRoot.path, '..', 'allure_dart_commons'),
@@ -148,12 +219,10 @@ dev_dependencies:
 ''';
 
   final project = await prepareTestProject(
-    tempPrefix: 'allure_dart_concurrency_e2e_',
-    sampleSource: File(p.join(samplesDir.path, 'alpha_sample.dart')),
+    tempPrefix: tempPrefix,
+    sampleSource: File(p.join(samplesDir.path, primarySampleName)),
     additionalSampleSources: <String, File>{
-      'beta_concurrency_test.dart': File(
-        p.join(samplesDir.path, 'beta_sample.dart'),
-      ),
+      secondaryTestFileName: File(p.join(samplesDir.path, secondarySampleName)),
     },
     pubspecContents: pubspecContents,
   );
@@ -187,17 +256,20 @@ dev_dependencies:
 
   final output = '${testRun.stdout}\n${testRun.stderr}';
 
+  final producedFiles = <File>[];
   final resultFiles = <File>[];
   final results = <Map<String, dynamic>>[];
+  final globalErrors = <Map<String, dynamic>>[];
   await harnessStep(
-    'Read produced Allure result JSON files for assertions',
+    'Read produced Allure result and globals JSON files for assertions',
     () async {
+      producedFiles
+        ..clear()
+        ..addAll(listProducedFiles(project.resultsDir));
       resultFiles
         ..clear()
         ..addAll(
-          listProducedFiles(
-            project.resultsDir,
-          ).where((file) => file.path.endsWith('-result.json')),
+          producedFiles.where((file) => file.path.endsWith('-result.json')),
         )
         ..sort((a, b) => a.path.compareTo(b.path));
       results
@@ -208,6 +280,18 @@ dev_dependencies:
                 jsonDecode(file.readAsStringSync()) as Map<String, dynamic>,
           ),
         );
+      globalErrors
+        ..clear()
+        ..addAll(
+          producedFiles
+              .where((file) => file.path.endsWith('-globals.json'))
+              .expand((file) {
+                final globals =
+                    jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
+                return (globals['errors'] as List<dynamic>? ?? const [])
+                    .cast<Map<String, dynamic>>();
+              }),
+        );
     },
   );
 
@@ -215,7 +299,9 @@ dev_dependencies:
     exitCode: testRun.exitCode,
     output: output,
     resultsDir: project.resultsDir,
+    producedFiles: producedFiles,
     resultFiles: resultFiles,
     results: results,
+    globalErrors: globalErrors,
   );
 }

@@ -175,6 +175,7 @@ class AllureTestRuntimePlugin {
           error: error,
           stackTrace: stackTrace,
         );
+        await _reportFixtureGlobalError('setUp', error, stackTrace);
         rethrow;
       }
     };
@@ -217,6 +218,7 @@ class AllureTestRuntimePlugin {
           error: error,
           stackTrace: stackTrace,
         );
+        await _reportFixtureGlobalError('tearDown', error, stackTrace);
         rethrow;
       }
     };
@@ -257,6 +259,7 @@ class AllureTestRuntimePlugin {
           error: error,
           stackTrace: stackTrace,
         );
+        await _reportFixtureGlobalError('setUpAll', error, stackTrace);
         rethrow;
       }
     };
@@ -297,11 +300,37 @@ class AllureTestRuntimePlugin {
           error: error,
           stackTrace: stackTrace,
         );
+        await _reportFixtureGlobalError('tearDownAll', error, stackTrace);
         rethrow;
       }
 
       await _lifecycle.writeScope(scopeId);
     };
+  }
+
+  /// Reports a failed hook as an Allure global error while keeping fixture
+  /// container output. Message shape matches allure-js integrations:
+  /// `{hookName} failed: {details}`.
+  Future<void> _reportFixtureGlobalError(
+    String name,
+    Object error,
+    StackTrace stackTrace,
+  ) {
+    final details = getMessageAndTraceFromError(error, stackTrace);
+    final message = (details.message == null || details.message!.isEmpty)
+        ? '$name failed'
+        : '$name failed: ${details.message}';
+    return _lifecycle.writeGlobalError(
+      AllureStatusDetails(
+        message: message,
+        trace: details.trace,
+        known: details.known,
+        muted: details.muted,
+        flaky: details.flaky,
+        actual: details.actual,
+        expected: details.expected,
+      ),
+    );
   }
 
   void _scheduleCurrentTestIfNeeded() {
@@ -351,10 +380,7 @@ class AllureTestRuntimePlugin {
             name: metadata.packagePath,
           );
 
-    final scopeIds = <String>[
-      if (fileScopeId != null) fileScopeId,
-      ...groupScopeIds,
-    ];
+    final scopeIds = <String>[?fileScopeId, ...groupScopeIds];
     final labels = <AllureLabel>[
       ...metadata.labels,
       if (metadata.packagePath != null) getPackageLabel(metadata.packagePath!),
