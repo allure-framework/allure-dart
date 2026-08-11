@@ -6,6 +6,13 @@ import 'config.dart';
 import 'model.dart';
 import 'platform.dart';
 
+/// Callback used to durably sync a staged temp file before publish.
+typedef AllureDurableFileSync = Future<void> Function(String path);
+
+/// Callback used to publish a staged temp file to its final path.
+typedef AllureDurableFilePublish =
+    Future<void> Function(String temporaryPath, String targetPath);
+
 /// Prepared attachment file paths reserved before content is written.
 class AllurePreparedAttachment {
   /// Creates prepared attachment metadata.
@@ -38,12 +45,14 @@ class AllurePreparedAttachment {
 /// Construction is allowed so libraries can load on web. The first write or
 /// initialization attempt explains that filesystem results are unavailable.
 class AllureResultsWriter {
-  /// Creates a writer. [outputDirectory], [uuid], and [config] are accepted for
-  /// API parity with the IO writer and ignored on browser platforms.
+  /// Creates a writer. Parameters are accepted for API parity with the IO
+  /// writer and ignored on browser platforms.
   AllureResultsWriter({
     String? outputDirectory,
     Uuid? uuid,
     AllureConfig? config,
+    AllureDurableFileSync? durableSync,
+    AllureDurableFilePublish? publishFile,
   });
 
   Never _unsupported(String operation) =>
@@ -135,4 +144,9 @@ class AllureResultsWriter {
   Future<void> writeExecutorInfo(AllureExecutorInfo info) async {
     _unsupported('write executor info');
   }
+}
+
+/// Browser stub for durable sync; filesystem sync is unavailable on web.
+Future<void> syncAllureFileDurably(String path) async {
+  allureUnsupportedFilesystem('sync files durably');
 }

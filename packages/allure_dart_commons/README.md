@@ -22,5 +22,9 @@ Use this package when you need low-level Allure result generation without the
   defaults for `resultsDir`, global `labels`, and run-level `environment`
   properties.
 
-All result and attachment writes use a temporary file followed by rename so
-downstream report generation does not see partially written payloads.
+All result and attachment writes stage into `.allure-write-*.tmp` in the
+results directory, apply a durable flush (`fsync` / `FlushFileBuffers`, plus
+macOS `F_FULLSYNC` when available), then rename to the final name so downstream
+report generation does not see partially written payloads. Readers such as
+Allure Report / `allure run` should ignore incomplete `*.tmp` staging names if
+they scan a live results directory.
