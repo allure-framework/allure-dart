@@ -5,6 +5,8 @@
 /// looking for `flutter_test_config.dart` and stops at the first match, so
 /// this file only applies to samples under `test/e2e/golden_samples/` and
 /// does not affect other e2e samples or `test/samples/`.
+library;
+
 import 'dart:async';
 
 import 'package:allure_flutter_test/allure_flutter_test.dart';

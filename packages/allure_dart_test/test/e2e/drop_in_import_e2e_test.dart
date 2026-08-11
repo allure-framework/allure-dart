@@ -380,7 +380,583 @@ void main() {
         },
       );
     });
+
+    test('reports setUp fixture hook errors as global errors', () async {
+      final run = await _runDropInSample(
+        sampleName: 'fixture_error_setup_sample.dart',
+      );
+
+      await harnessStep(
+        'Verify setUp failure writes a broken fixture and one matching global error',
+        () {
+          _expectFixtureHookGlobalError(
+            run,
+            hookName: 'setUp',
+            boomText: 'setUp boom',
+            expectBrokenFixture: true,
+          );
+        },
+      );
+    });
+
+    test('reports tearDown fixture hook errors as global errors', () async {
+      final run = await _runDropInSample(
+        sampleName: 'fixture_error_teardown_sample.dart',
+      );
+
+      await harnessStep(
+        'Verify tearDown failure writes a broken fixture and one matching global error',
+        () {
+          _expectFixtureHookGlobalError(
+            run,
+            hookName: 'tearDown',
+            boomText: 'tearDown boom',
+            expectBrokenFixture: true,
+          );
+        },
+      );
+    });
+
+    test('reports setUpAll fixture hook errors as global errors', () async {
+      final run = await _runDropInSample(
+        sampleName: 'fixture_error_setup_all_sample.dart',
+      );
+
+      await harnessStep(
+        'Verify setUpAll failure writes one matching global error without containers',
+        () {
+          // package:test skips the suite after setUpAll fails, so no test
+          // children complete and Allure never flushes a fixture container.
+          expect(
+            run.containers,
+            isEmpty,
+            reason:
+                'setUpAll failure leaves the package scope without completed '
+                'children, so containers are not written\n${run.output}',
+          );
+          _expectFixtureHookGlobalError(
+            run,
+            hookName: 'setUpAll',
+            boomText: 'setUpAll boom',
+            expectBrokenFixture: false,
+          );
+        },
+      );
+    });
+
+    test('reports tearDownAll fixture hook errors as global errors', () async {
+      final run = await _runDropInSample(
+        sampleName: 'fixture_error_teardown_all_sample.dart',
+      );
+
+      await harnessStep(
+        'Verify tearDownAll failure writes a broken fixture and one matching global error',
+        () {
+          _expectFixtureHookGlobalError(
+            run,
+            hookName: 'tearDownAll',
+            boomText: 'tearDownAll boom',
+            expectBrokenFixture: true,
+          );
+        },
+      );
+    });
+
+    test(
+      'reports setUp and tearDown fixture hook errors together as global errors',
+      () async {
+        final run = await _runDropInSample(
+          sampleName: 'fixture_error_setup_and_teardown_sample.dart',
+        );
+
+        await harnessStep(
+          'Verify setUp failure still runs tearDown and both write globals and fixtures',
+          () {
+            expect(
+              run.exitCode,
+              isNonZero,
+              reason: 'sample must fail\n${run.output}',
+            );
+
+            final fixtures = _allFixtures(run);
+            for (final hookName in <String>['setUp', 'tearDown']) {
+              final boomText = '$hookName boom';
+              final hookFixtures = fixtures
+                  .where((fixture) => fixture['name'] == hookName)
+                  .toList();
+              expect(
+                hookFixtures,
+                isNotEmpty,
+                reason:
+                    'expected $hookName fixture in containers\n${run.output}',
+              );
+              expect(
+                hookFixtures.any(
+                  (fixture) =>
+                      (fixture['status'] == 'broken' ||
+                          fixture['status'] == 'failed') &&
+                      ((fixture['statusDetails']
+                                      as Map<String, dynamic>?)?['message']
+                                  as String? ??
+                              '')
+                          .contains(boomText),
+                ),
+                isTrue,
+                reason:
+                    'expected a broken/failed $hookName fixture containing '
+                    '$boomText\n${run.output}',
+              );
+            }
+
+            final allErrors = _allGlobalErrors(run);
+            final messages = allErrors
+                .map((error) => error['message'] as String? ?? '')
+                .toList();
+            expect(
+              messages.where((message) => message.startsWith('setUp failed:')),
+              hasLength(1),
+              reason: 'all errors: $messages\n${run.output}',
+            );
+            expect(
+              messages.where(
+                (message) => message.startsWith('tearDown failed:'),
+              ),
+              hasLength(1),
+              reason: 'all errors: $messages\n${run.output}',
+            );
+            expect(
+              messages.singleWhere(
+                (message) => message.startsWith('setUp failed:'),
+              ),
+              contains('setUp boom'),
+            );
+            expect(
+              messages.singleWhere(
+                (message) => message.startsWith('tearDown failed:'),
+              ),
+              contains('tearDown boom'),
+            );
+          },
+        );
+      },
+    );
+
+    test(
+      'reports assertion failures in setUp fixtures as failed not broken',
+      () async {
+        final run = await _runDropInSample(
+          sampleName: 'fixture_error_setup_assert_sample.dart',
+        );
+
+        await harnessStep(
+          'Verify setUp TestFailure writes failed fixture and matching global',
+          () {
+            _expectFixtureHookGlobalError(
+              run,
+              hookName: 'setUp',
+              boomText: 'assert boom',
+              expectBrokenFixture: true,
+              expectedFixtureStatus: 'failed',
+            );
+          },
+        );
+      },
+    );
+
+    test(
+      'reports nested group setUp fixture hook errors as global errors',
+      () async {
+        final run = await _runDropInSample(
+          sampleName: 'fixture_error_nested_setup_sample.dart',
+        );
+
+        await harnessStep(
+          'Verify nested setUp failure writes one global and a broken fixture',
+          () {
+            _expectFixtureHookGlobalError(
+              run,
+              hookName: 'setUp',
+              boomText: 'nested setUp boom',
+              expectBrokenFixture: true,
+            );
+            expect(run.resultFiles, isNotEmpty, reason: run.output);
+            final result = run.results.single;
+            expect(result['titlePath'], const [
+              'test',
+              'sample_test.dart',
+              'outer group',
+              'nested group',
+            ]);
+          },
+        );
+      },
+    );
+
+    test(
+      'writes exactly one globals error for a single failing setUp hook',
+      () async {
+        final run = await _runDropInSample(
+          sampleName: 'fixture_error_setup_sample.dart',
+        );
+
+        await harnessStep(
+          'Verify single-hook setUp failure produces exactly one globals error',
+          () {
+            _expectFixtureHookGlobalError(
+              run,
+              hookName: 'setUp',
+              boomText: 'setUp boom',
+              expectBrokenFixture: true,
+            );
+            expect(
+              _allGlobalErrors(run),
+              hasLength(1),
+              reason:
+                  'single-hook sample must not emit extra globals\n'
+                  '${run.output}',
+            );
+          },
+        );
+      },
+    );
+
+    test('does not wrap addTearDown throws as fixture hook globals', () async {
+      final run = await _runDropInSample(
+        sampleName: 'fixture_error_add_teardown_sample.dart',
+      );
+
+      await harnessStep(
+        'Verify addTearDown failure breaks the test without fixture/global wrap',
+        () {
+          expect(
+            run.exitCode,
+            isNonZero,
+            reason: 'sample must fail\n${run.output}',
+          );
+          expect(run.resultFiles, hasLength(1), reason: run.output);
+
+          final result = run.results.single;
+          expect(
+            result['status'],
+            anyOf('broken', 'failed'),
+            reason: run.output,
+          );
+          expect(
+            (result['statusDetails'] as Map<String, dynamic>)['message']
+                as String?,
+            contains('addTearDown boom'),
+          );
+
+          final fixtures = _allFixtures(run);
+          expect(
+            fixtures.any((fixture) => fixture['name'] == 'addTearDown'),
+            isFalse,
+            reason:
+                'addTearDown must not appear as an Allure fixture\n'
+                '${run.output}',
+          );
+
+          final messages = _allGlobalErrors(
+            run,
+          ).map((error) => error['message'] as String? ?? '').toList();
+          expect(
+            messages.any(
+              (message) => message.startsWith('addTearDown failed:'),
+            ),
+            isFalse,
+            reason:
+                'addTearDown must not emit wrapped globals\n'
+                'all errors: $messages\n${run.output}',
+          );
+        },
+      );
+    });
+
+    test('marks the test broken when setUp fails before the body runs', () async {
+      final run = await _runDropInSample(
+        sampleName: 'fixture_error_setup_body_never_ran_sample.dart',
+      );
+
+      await harnessStep(
+        'Verify setUp failure leaves a broken/failed result without body steps',
+        () {
+          _expectFixtureHookGlobalError(
+            run,
+            hookName: 'setUp',
+            boomText: 'setUp boom',
+            expectBrokenFixture: true,
+          );
+          expect(run.resultFiles, hasLength(1), reason: run.output);
+
+          final result = run.results.single;
+          expect(
+            result['status'],
+            anyOf('broken', 'failed'),
+            reason: run.output,
+          );
+          expect(
+            (result['statusDetails'] as Map<String, dynamic>)['message']
+                as String?,
+            contains('setUp boom'),
+          );
+
+          final steps = (result['steps'] as List<dynamic>? ?? const [])
+              .cast<Map<String, dynamic>>();
+          expect(
+            steps.any(
+              (step) =>
+                  step['name'] == 'body ran' && step['status'] == 'passed',
+            ),
+            isFalse,
+            reason: 'body step must not have run\n${run.output}',
+          );
+        },
+      );
+    });
+
+    test(
+      'does not duplicate setUp globals when installAllure combines with drop-in',
+      () async {
+        final run = await _runSampleFromDirectory(
+          sampleDirectory: 'mixed_mode_samples',
+          sampleName: 'install_plus_drop_in_setup_error_sample.dart',
+        );
+
+        await harnessStep(
+          'Verify mixed-mode setUp failure emits exactly one matching global',
+          () {
+            _expectFixtureHookGlobalError(
+              run,
+              hookName: 'setUp',
+              boomText: 'mixed setUp boom',
+              expectBrokenFixture: true,
+            );
+            expect(
+              _allGlobalErrors(run),
+              hasLength(1),
+              reason:
+                  'install+drop-in must not double-emit globals\n'
+                  '${run.output}',
+            );
+          },
+        );
+      },
+    );
+
+    test('reports async setUp fixture hook errors as global errors', () async {
+      final run = await _runDropInSample(
+        sampleName: 'fixture_error_async_setup_sample.dart',
+      );
+
+      await harnessStep(
+        'Verify async setUp failure writes a broken fixture and one matching global',
+        () {
+          _expectFixtureHookGlobalError(
+            run,
+            hookName: 'setUp',
+            boomText: 'async setUp boom',
+            expectBrokenFixture: true,
+          );
+        },
+      );
+    });
+
+    test(
+      'falls back to setUp failed when the hook error has an empty message',
+      () async {
+        final run = await _runDropInSample(
+          sampleName: 'fixture_error_empty_message_sample.dart',
+        );
+
+        await harnessStep(
+          'Verify empty toString uses the setUp failed fallback global message',
+          () {
+            expect(
+              run.exitCode,
+              isNonZero,
+              reason: 'sample must fail\n${run.output}',
+            );
+            final allErrors = _allGlobalErrors(run);
+            final matching = allErrors
+                .where(
+                  (error) =>
+                      (error['message'] as String? ?? '') == 'setUp failed',
+                )
+                .toList();
+            expect(
+              matching,
+              hasLength(1),
+              reason:
+                  'expected exactly one global with message "setUp failed"\n'
+                  'all errors: ${allErrors.map((error) => error['message']).toList()}\n'
+                  '${run.output}',
+            );
+            expect(
+              matching.single['trace'] as String?,
+              contains('sample_test.dart'),
+            );
+          },
+        );
+      },
+    );
+
+    test(
+      'propagates metadata from a failing before-hook onto the test result',
+      () async {
+        final run = await _runDropInSample(
+          sampleName: 'fixture_error_setup_metadata_sample.dart',
+        );
+
+        await harnessStep(
+          'Verify failing setUp still applies owner/description/parameter to the test',
+          () {
+            _expectFixtureHookGlobalError(
+              run,
+              hookName: 'setUp',
+              boomText: 'metadata setUp boom',
+              expectBrokenFixture: true,
+            );
+            expect(run.resultFiles, hasLength(1), reason: run.output);
+
+            final result = run.results.single;
+            // Documented product truth: metadata written in a failing setUp
+            // still reaches the test result, matching successful setUp
+            // fixture_metadata_sample behavior.
+            expect(
+              result['labels'],
+              containsAll(<Map<String, String>>[
+                {'name': 'owner', 'value': 'failing-setup-owner'},
+              ]),
+            );
+            expect(result['description'], 'failing before fixture description');
+            expect(
+              result['parameters'],
+              containsAll(<Map<String, String>>[
+                {'name': 'failing-setup-param', 'value': 'before'},
+              ]),
+            );
+          },
+        );
+      },
+    );
+
+    test(
+      'still writes setUpAll global when the suite is selected via test plan',
+      () async {
+        final run = await _runDropInSample(
+          sampleName: 'fixture_error_setup_all_test_plan_sample.dart',
+          testPlanContents:
+              '{"version":"1.0","tests":[{"selector":"test/sample_test.dart#selected under test plan with setUpAll fail"}]}',
+        );
+
+        await harnessStep(
+          'Verify test-plan selection still emits setUpAll failed global',
+          () {
+            _expectFixtureHookGlobalError(
+              run,
+              hookName: 'setUpAll',
+              boomText: 'setUpAll boom',
+              expectBrokenFixture: false,
+            );
+          },
+        );
+      },
+    );
   });
+}
+
+List<Map<String, dynamic>> _allFixtures(_RunSampleResult run) {
+  return run.containers
+      .expand(
+        (container) => <dynamic>[
+          ...(container['befores'] as List<dynamic>),
+          ...(container['afters'] as List<dynamic>),
+        ],
+      )
+      .cast<Map<String, dynamic>>()
+      .toList();
+}
+
+List<Map<String, dynamic>> _allGlobalErrors(_RunSampleResult run) {
+  final globalsFiles = run.producedFiles
+      .where((file) => file.path.endsWith('-globals.json'))
+      .toList();
+  return globalsFiles.expand((file) {
+    final globals = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
+    return (globals['errors'] as List<dynamic>? ?? const [])
+        .cast<Map<String, dynamic>>();
+  }).toList();
+}
+
+/// Asserts a drop-in fixture hook failure exits non-zero, optionally records a
+/// broken/failed fixture of [hookName], and writes exactly one matching global
+/// error with prefix `{hookName} failed:` plus [boomText] and sample_test.dart
+/// in the trace.
+void _expectFixtureHookGlobalError(
+  _RunSampleResult run, {
+  required String hookName,
+  required String boomText,
+  required bool expectBrokenFixture,
+  String? expectedFixtureStatus,
+}) {
+  expect(run.exitCode, isNonZero, reason: 'sample must fail\n${run.output}');
+
+  if (expectBrokenFixture) {
+    final fixtures = _allFixtures(run);
+    final hookFixtures = fixtures
+        .where((fixture) => fixture['name'] == hookName)
+        .toList();
+    expect(
+      hookFixtures,
+      isNotEmpty,
+      reason: 'expected $hookName fixture in containers\n${run.output}',
+    );
+    final statusMatcher = expectedFixtureStatus == null
+        ? (String? status) => status == 'broken' || status == 'failed'
+        : (String? status) => status == expectedFixtureStatus;
+    expect(
+      hookFixtures.any(
+        (fixture) =>
+            statusMatcher(fixture['status'] as String?) &&
+            ((fixture['statusDetails'] as Map<String, dynamic>?)?['message']
+                        as String? ??
+                    '')
+                .contains(boomText),
+      ),
+      isTrue,
+      reason:
+          'expected a '
+          '${expectedFixtureStatus ?? 'broken/failed'} $hookName fixture '
+          'containing $boomText\n${run.output}',
+    );
+  }
+
+  final allErrors = _allGlobalErrors(run);
+  expect(
+    allErrors,
+    isNotEmpty,
+    reason: 'fixture hook errors must produce *-globals.json\n${run.output}',
+  );
+
+  final matchingErrors = allErrors
+      .where(
+        (error) =>
+            (error['message'] as String? ?? '').startsWith('$hookName failed:'),
+      )
+      .toList();
+  expect(
+    matchingErrors,
+    hasLength(1),
+    reason:
+        'expected exactly one global error starting with "$hookName failed:"\n'
+        'all errors: ${allErrors.map((error) => error['message']).toList()}\n'
+        '${run.output}',
+  );
+  expect(matchingErrors.single['message'] as String, contains(boomText));
+  expect(
+    matchingErrors.single['trace'] as String?,
+    contains('sample_test.dart'),
+  );
 }
 
 void _expectRuntimeBaseResultFields(
@@ -429,6 +1005,8 @@ class _RunSampleResult {
   _RunSampleResult({
     required this.exitCode,
     required this.output,
+    required this.resultsDir,
+    required this.producedFiles,
     required this.resultFiles,
     required this.results,
     required this.containerFiles,
@@ -437,6 +1015,8 @@ class _RunSampleResult {
 
   final int exitCode;
   final String output;
+  final Directory resultsDir;
+  final List<File> producedFiles;
   final List<File> resultFiles;
   final List<Map<String, dynamic>> results;
   final List<File> containerFiles;
@@ -533,6 +1113,7 @@ dev_dependencies:
 
   final output = '${testRun.stdout}\n${testRun.stderr}';
 
+  final producedFiles = <File>[];
   final resultFiles = <File>[];
   final containerFiles = <File>[];
   final results = <Map<String, dynamic>>[];
@@ -540,14 +1121,20 @@ dev_dependencies:
   await harnessStep(
     'Read produced Allure result and container JSON files for assertions',
     () async {
-      final files = listProducedFiles(project.resultsDir);
+      producedFiles
+        ..clear()
+        ..addAll(listProducedFiles(project.resultsDir));
       resultFiles
         ..clear()
-        ..addAll(files.where((file) => file.path.endsWith('-result.json')))
+        ..addAll(
+          producedFiles.where((file) => file.path.endsWith('-result.json')),
+        )
         ..sort((a, b) => a.path.compareTo(b.path));
       containerFiles
         ..clear()
-        ..addAll(files.where((file) => file.path.endsWith('-container.json')))
+        ..addAll(
+          producedFiles.where((file) => file.path.endsWith('-container.json')),
+        )
         ..sort((a, b) => a.path.compareTo(b.path));
       results
         ..clear()
@@ -571,6 +1158,8 @@ dev_dependencies:
   return _RunSampleResult(
     exitCode: testRun.exitCode,
     output: output,
+    resultsDir: project.resultsDir,
+    producedFiles: producedFiles,
     resultFiles: resultFiles,
     results: results,
     containerFiles: containerFiles,
