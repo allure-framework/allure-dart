@@ -21,6 +21,9 @@ jobs:
     timeout-minutes: 120
     permissions:
       contents: write
+    env:
+      GIT_COMMIT_AUTHOR_EMAIL: ${{ vars.ALLURE_CI_APP_USER_ID }}+${{ vars.ALLURE_CI_APP_SLUG }}[bot]@users.noreply.github.com
+      GIT_COMMIT_AUTHOR_NAME: ${{ vars.ALLURE_CI_APP_SLUG }}[bot]
 
     steps:
       - name: Check release version
@@ -37,11 +40,19 @@ jobs:
             exit 1
           fi
 
+      - name: Create GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.ALLURE_CI_APP_CLIENT_ID }}
+          private-key: ${{ secrets.ALLURE_CI_APP_PRIVATE_KEY }}
+          permission-contents: write
+
       - name: Checkout repository
         uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
-          token: ${{ secrets.QAMETA_CI }}
+          token: ${{ steps.app-token.outputs.token }}
 
       - name: Check release tags
         shell: bash
@@ -98,8 +109,8 @@ jobs:
 
       - name: Configure CI Git user
         run: |
-          git config --global user.name qameta-ci
-          git config --global user.email qameta-ci@qameta.io
+          git config --global user.name "${GIT_COMMIT_AUTHOR_NAME}"
+          git config --global user.email "${GIT_COMMIT_AUTHOR_EMAIL}"
 
       - name: Set release version
         shell: bash
@@ -232,6 +243,20 @@ jobs:
           echo "allure_dart_commons ${version} did not resolve with dart pub get in time." >&2
           exit 1
 
+      # App tokens expire after ~1h; refresh after long pub.dev waits.
+      - name: Refresh GitHub App token after commons wait
+        id: app-token-after-commons
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.ALLURE_CI_APP_CLIENT_ID }}
+          private-key: ${{ secrets.ALLURE_CI_APP_PRIVATE_KEY }}
+          permission-contents: write
+
+      - name: Update git remote credentials after commons wait
+        env:
+          GH_TOKEN: ${{ steps.app-token-after-commons.outputs.token }}
+        run: git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
+
       - name: Push package:test adapter tag
         shell: bash
         run: |
@@ -268,6 +293,19 @@ jobs:
           echo "allure_dart_commons and allure_dart_test ${version} did not resolve with dart pub get in time." >&2
           exit 1
 
+      - name: Refresh GitHub App token after dart-test wait
+        id: app-token-final
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.ALLURE_CI_APP_CLIENT_ID }}
+          private-key: ${{ secrets.ALLURE_CI_APP_PRIVATE_KEY }}
+          permission-contents: write
+
+      - name: Update git remote credentials after dart-test wait
+        env:
+          GH_TOKEN: ${{ steps.app-token-final.outputs.token }}
+        run: git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
+
       - name: Push Flutter adapter tag
         shell: bash
         run: |
@@ -293,4 +331,4 @@ jobs:
           generate_release_notes: true
           target_commitish: ${{ github.ref_name }}
         env:
-          GITHUB_TOKEN: ${{ secrets.QAMETA_CI }}
+          GITHUB_TOKEN: ${{ steps.app-token-final.outputs.token }}

@@ -137,15 +137,11 @@ void main() {
       });
     });
 
-    testWidgets(
-      'wraps testWidgets variants',
-      (tester) async {
-        await step('verify absent text is not found', (_) async {
-          expect(find.text('missing'), findsNothing);
-        });
-      },
-      variant: ValueVariant<String>(<String>{'compact', 'expanded'}),
-    );
+    testWidgets('wraps testWidgets variants', (tester) async {
+      await step('verify absent text is not found', (_) async {
+        expect(find.text('missing'), findsNothing);
+      });
+    }, variant: ValueVariant<String>(<String>{'compact', 'expanded'}));
 
     testWidgets('records widget expectations', (tester) async {
       await step('render widget and verify text', (_) async {
