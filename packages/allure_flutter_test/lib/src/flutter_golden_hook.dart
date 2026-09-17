@@ -2,9 +2,12 @@
 ///
 /// Installed by `installAllure(autoAttachGoldenDiff: true)`. It wraps
 /// `flutter_test`'s [ft.goldenFileComparator] with a delegating comparator
-/// that attaches the actual rendered PNG (and, best-effort, the
-/// [ft.LocalFileComparator] failure diff PNGs on disk) to the Allure test
-/// result whenever a `matchesGoldenFile` comparison fails.
+/// that attaches Allure visual-comparison evidence whenever a
+/// `matchesGoldenFile` comparison fails.
+///
+/// Prefer a single `application/vnd.allure.image.diff` attachment when
+/// [ft.LocalFileComparator] has written expected/actual/diff PNGs. Fall back
+/// to separate PNG attachments when the full triad is unavailable.
 library;
 
 import 'dart:io';
@@ -74,50 +77,111 @@ class _AllureGoldenFileComparator extends ft.GoldenFileComparator {
 
   Future<void> _attachGoldenDiff(Uint8List imageBytes, Uri golden) async {
     try {
+      final delegate = _delegate;
+      if (delegate is ft.LocalFileComparator) {
+        final attachedImageDiff = await _attachLocalImageDiff(
+          delegate,
+          golden,
+          imageBytes,
+        );
+        if (attachedImageDiff) {
+          return;
+        }
+        await _attachLocalFailureFiles(delegate, golden);
+      }
       await attachment(
         'golden-actual',
         imageBytes,
         contentType: 'image/png',
         fileExtension: 'png',
       );
-      final delegate = _delegate;
-      if (delegate is ft.LocalFileComparator) {
-        await _attachLocalFailureFiles(delegate, golden);
-      }
     } catch (_) {
       // Best-effort: never mask the original golden-file failure.
     }
   }
 
-  /// Attaches the `failures/*.png` diff images that [ft.LocalFileComparator]
-  /// writes to disk on a mismatch (master, test, masked diff, isolated
-  /// diff), if present.
+  /// Attaches an Allure imagediff when expected and actual PNGs exist.
+  ///
+  /// [ft.LocalFileComparator] writes `failures/*_masterImage.png` (expected)
+  /// and `*_testImage.png` (actual). Same-size pixel mismatches may also
+  /// write `*_maskedDiff.png` / `*_isolatedDiff.png` for the optional diff
+  /// pane.
+  Future<bool> _attachLocalImageDiff(
+    ft.LocalFileComparator comparator,
+    Uri golden,
+    Uint8List imageBytes,
+  ) async {
+    final failureFiles = _localFailureFiles(comparator, golden);
+    final expectedFile = failureFiles['masterImage'];
+    final actualFile = failureFiles['testImage'];
+    final maskedFile = failureFiles['maskedDiff'];
+    final isolatedFile = failureFiles['isolatedDiff'];
+
+    if (expectedFile == null || !await expectedFile.exists()) {
+      return false;
+    }
+
+    final expectedBytes = await expectedFile.readAsBytes();
+    final actualBytes = actualFile != null && await actualFile.exists()
+        ? await actualFile.readAsBytes()
+        : imageBytes;
+
+    List<int>? diffBytes;
+    for (final candidate in [maskedFile, isolatedFile]) {
+      if (candidate != null && await candidate.exists()) {
+        diffBytes = await candidate.readAsBytes();
+        break;
+      }
+    }
+
+    await attachImageDiff(
+      'golden-diff',
+      expected: expectedBytes,
+      actual: actualBytes,
+      diff: diffBytes,
+    );
+    return true;
+  }
+
+  /// Attaches the `failures/*.png` images when a full imagediff triad is
+  /// unavailable (for example size-mismatch failures without diff PNGs).
   Future<void> _attachLocalFailureFiles(
     ft.LocalFileComparator comparator,
     Uri golden,
   ) async {
-    final fileName = golden.pathSegments.last;
-    final dotIndex = fileName.lastIndexOf('.');
-    final baseName = dotIndex <= 0 ? fileName : fileName.substring(0, dotIndex);
-
-    for (final suffix in const [
-      'masterImage',
-      'testImage',
-      'maskedDiff',
-      'isolatedDiff',
-    ]) {
-      final file = File.fromUri(
-        comparator.basedir.resolve('failures/${baseName}_$suffix.png'),
-      );
-      if (!await file.exists()) {
+    for (final entry in _localFailureFiles(comparator, golden).entries) {
+      final file = entry.value;
+      if (file == null || !await file.exists()) {
         continue;
       }
       await attachmentPath(
-        'golden-$suffix',
+        'golden-${entry.key}',
         file.path,
         contentType: 'image/png',
         fileExtension: 'png',
       );
     }
+  }
+
+  Map<String, File?> _localFailureFiles(
+    ft.LocalFileComparator comparator,
+    Uri golden,
+  ) {
+    final fileName = golden.pathSegments.last;
+    final dotIndex = fileName.lastIndexOf('.');
+    final baseName = dotIndex <= 0 ? fileName : fileName.substring(0, dotIndex);
+
+    File? fileFor(String suffix) {
+      return File.fromUri(
+        comparator.basedir.resolve('failures/${baseName}_$suffix.png'),
+      );
+    }
+
+    return <String, File?>{
+      'masterImage': fileFor('masterImage'),
+      'testImage': fileFor('testImage'),
+      'maskedDiff': fileFor('maskedDiff'),
+      'isolatedDiff': fileFor('isolatedDiff'),
+    };
   }
 }
