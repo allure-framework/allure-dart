@@ -7,3 +7,17 @@ environment:
 workspace:
   - packages/allure_dart_commons
   - packages/allure_dart_test
+
+dev_dependencies:
+  # 5.4.7 is the newest release compatible with the workspace SDK (^3.8).
+  dart_pre_commit: 5.4.7
+
+# Format-only pre-commit checks. Enable with:
+#   dart run tool/setup_git_hooks.dart
+dart_pre_commit:
+  format: true
+  analyze: false
+  flutter-compat: false
+  outdated: false
+  pull-up-dependencies: false
+  osv-scanner: false

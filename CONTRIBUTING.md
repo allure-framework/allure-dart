@@ -41,6 +41,21 @@ rm packages/allure_flutter_test/pubspec_overrides.yaml
 
 ## Development Checks
 
+### Git pre-commit formatting
+
+This repository uses [`dart_pre_commit`](https://pub.dev/packages/dart_pre_commit)
+to format staged Dart files before each commit. Install the hook once per clone:
+
+```bash
+dart pub get
+dart run tool/setup_git_hooks.dart
+```
+
+The hook runs `dart run dart_pre_commit` with format-only settings from the root
+`pubspec.yaml`. It re-stages files it rewrites.
+
+### Manual checks
+
 Use the narrowest checks that cover your change, or run the full quality script:
 
 ```bash
