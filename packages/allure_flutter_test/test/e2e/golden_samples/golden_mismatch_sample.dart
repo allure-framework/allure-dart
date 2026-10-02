@@ -1,8 +1,8 @@
 /// Sample `testWidgets` whose rendering intentionally mismatches a tiny
 /// committed golden file, verifying the opt-in auto golden-diff attach hook
-/// (enabled by this directory's `flutter_test_config.dart`) attaches the
-/// actual rendered PNG (and, when available, the `LocalFileComparator`
-/// failure diff PNGs) to the failed Allure result.
+/// (enabled by this directory's `flutter_test_config.dart`) attaches an
+/// Allure `application/vnd.allure.image.diff` attachment to the failed
+/// result when `LocalFileComparator` failure images are available.
 ///
 /// Named `*_sample.dart` instead of `*_test.dart` so a default recursive
 /// `flutter test` run does not pick it up; it is run explicitly by

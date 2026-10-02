@@ -350,6 +350,29 @@ Future<void> attachTrace(String name, String path) {
   );
 }
 
+/// Adds an Allure visual comparison attachment from PNG [expected], [actual],
+/// and optional [diff] bytes.
+///
+/// The attachment body is JSON with `data:image/png;base64,...` fields and
+/// MIME type [allureImageDiffContentType].
+Future<void> attachImageDiff(
+  String name, {
+  required List<int> expected,
+  required List<int> actual,
+  List<int>? diff,
+  bool wrapInStep = true,
+  int? timestamp,
+}) {
+  return attachment(
+    name,
+    buildAllureImageDiffJson(expected: expected, actual: actual, diff: diff),
+    contentType: allureImageDiffContentType,
+    fileExtension: allureImageDiffExtension,
+    wrapInStep: wrapInStep,
+    timestamp: timestamp,
+  );
+}
+
 /// Writes a run-level attachment from in-memory [content].
 Future<void> globalAttachment(
   String name,

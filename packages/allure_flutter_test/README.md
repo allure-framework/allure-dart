@@ -75,10 +75,12 @@ installAllure(
   detect a failing test, then captures a screenshot of the current widget
   tree in a `tearDown` and attaches it as `screenshot-on-failure` (PNG).
 - `autoAttachGoldenDiff` wraps `goldenFileComparator` so that any
-  `matchesGoldenFile` mismatch attaches the actual rendered PNG as
-  `golden-actual`, plus (best-effort, when the comparator is the default
-  `LocalFileComparator`) the `failures/*.png` master/test/diff images it
-  already writes to disk.
+  `matchesGoldenFile` mismatch attaches an Allure visual comparison
+  (`application/vnd.allure.image.diff`) named `golden-diff` when
+  `LocalFileComparator` has written expected/actual PNGs under `failures/`
+  (diff pane included when masked/isolated diff images exist). If those
+  files are unavailable, it falls back to attaching `golden-actual` plus
+  any available `failures/*.png` files.
 
 Both hooks are best-effort: a capture or attachment failure is swallowed so
 it never masks the original test failure. Both are monotonic — once enabled

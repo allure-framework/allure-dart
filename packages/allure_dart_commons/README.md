@@ -18,6 +18,8 @@ Use this package when you need low-level Allure result generation without the
   classifications.
 - `addAttachmentStreamToRoot` and `addPreparedAttachmentToRoot` write large or
   late artifacts before the result references them.
+- `attachImageDiff` writes an Allure visual comparison attachment
+  (`application/vnd.allure.image.diff`) from expected/actual/diff PNG bytes.
 - `AllureConfig` loads checked-in `allure-dart.yaml`/`allure-dart.yml`
   defaults for `resultsDir`, global `labels`, and run-level `environment`
   properties.

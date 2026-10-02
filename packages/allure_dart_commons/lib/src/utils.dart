@@ -10,6 +10,39 @@ import 'platform.dart';
 /// Label name used to mark tests excluded by an Allure test plan.
 const String allureTestPlanSkipLabel = 'ALLURE_TESTPLAN_SKIP';
 
+/// MIME type for Allure visual comparison attachments.
+///
+/// See https://allurereport.org/docs/attachments/#visual-comparisons
+const String allureImageDiffContentType = 'application/vnd.allure.image.diff';
+
+/// Canonical file extension for [allureImageDiffContentType] attachments.
+const String allureImageDiffExtension = 'imagediff';
+
+/// Encodes PNG [bytes] as a `data:image/png;base64,...` data URL.
+String encodeAllurePngDataUrl(List<int> bytes) {
+  return 'data:image/png;base64,${base64.encode(bytes)}';
+}
+
+/// Builds the JSON body for an Allure image-diff attachment.
+///
+/// [expected] and [actual] must be raw PNG bytes. [diff] is optional: same-size
+/// pixel mismatches usually provide it, while size mismatches may only have
+/// expected/actual images.
+String buildAllureImageDiffJson({
+  required List<int> expected,
+  required List<int> actual,
+  List<int>? diff,
+}) {
+  final payload = <String, String>{
+    'expected': encodeAllurePngDataUrl(expected),
+    'actual': encodeAllurePngDataUrl(actual),
+  };
+  if (diff != null) {
+    payload['diff'] = encodeAllurePngDataUrl(diff);
+  }
+  return jsonEncode(payload);
+}
+
 /// Returns the current timestamp in milliseconds since epoch.
 int currentTimestamp() => DateTime.now().millisecondsSinceEpoch;
 

@@ -326,7 +326,7 @@ void main() {
     );
 
     test(
-      'attaches golden-actual and failure diff PNGs on a golden mismatch when auto golden-diff attach is enabled',
+      'attaches an Allure imagediff on a golden mismatch when auto golden-diff attach is enabled',
       () async {
         final run = await _runFlutterSample(
           'golden_mismatch_sample.dart',
@@ -334,7 +334,7 @@ void main() {
         );
 
         await step(
-          'Verify golden-actual and disk failure diffs are attached to the failed result',
+          'Verify golden-diff imagediff is attached to the failed result',
           (_) async {
             expect(run.exitCode, isNot(0), reason: run.output);
             expect(run.resultFiles, hasLength(1));
@@ -343,38 +343,30 @@ void main() {
             expect(result['name'], 'mismatches the committed golden file');
             expect(result['status'], isNot('passed'));
 
-            final actualAttachment = _findAttachment(
-              result,
-              name: 'golden-actual',
-            );
-            expect(actualAttachment, isNotNull, reason: run.output);
-            expect(actualAttachment!['type'], 'image/png');
-            _expectPngMagicBytes(
-              File(
-                p.join(
-                  run.resultsDir.path,
-                  actualAttachment['source'] as String,
-                ),
-              ).readAsBytesSync(),
+            final diffAttachment = _findAttachment(result, name: 'golden-diff');
+            expect(diffAttachment, isNotNull, reason: run.output);
+            expect(diffAttachment!['type'], allureImageDiffContentType);
+            expect(
+              diffAttachment['source'],
+              endsWith('.$allureImageDiffExtension'),
             );
 
-            // `LocalFileComparator` always writes `masterImage`/`testImage`
-            // diffs on a mismatch (`maskedDiff`/`isolatedDiff` are only added
-            // for same-size pixel mismatches), so these two are asserted
-            // unconditionally while the other two remain best-effort.
-            for (final suffix in const ['masterImage', 'testImage']) {
-              final diffAttachment = _findAttachment(
-                result,
-                name: 'golden-$suffix',
-              );
-              expect(diffAttachment, isNotNull, reason: run.output);
+            final payload =
+                jsonDecode(
+                      File(
+                        p.join(
+                          run.resultsDir.path,
+                          diffAttachment['source'] as String,
+                        ),
+                      ).readAsStringSync(),
+                    )
+                    as Map<String, dynamic>;
+            expect(payload.keys, containsAll(<String>['expected', 'actual']));
+            for (final key in payload.keys) {
+              final value = payload[key] as String;
+              expect(value, startsWith('data:image/png;base64,'));
               _expectPngMagicBytes(
-                File(
-                  p.join(
-                    run.resultsDir.path,
-                    diffAttachment!['source'] as String,
-                  ),
-                ).readAsBytesSync(),
+                base64.decode(value.substring('data:image/png;base64,'.length)),
               );
             }
           },
