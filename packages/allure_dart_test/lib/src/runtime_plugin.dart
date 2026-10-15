@@ -316,20 +316,29 @@ class AllureTestRuntimePlugin {
     Object error,
     StackTrace stackTrace,
   ) {
-    final details = getMessageAndTraceFromError(error, stackTrace);
-    final message = (details.message == null || details.message!.isEmpty)
-        ? '$name failed'
-        : '$name failed: ${details.message}';
+    final normalized = getGlobalErrorDetails(
+      error: error,
+      stackTrace: stackTrace,
+    );
+    final message = toGlobalErrorMessage(
+      name: name,
+      details: normalized,
+      status: normalized.status,
+    );
+    final data = message.data;
     return _lifecycle.writeGlobalError(
       AllureStatusDetails(
-        message: message,
-        trace: details.trace,
-        known: details.known,
-        muted: details.muted,
-        flaky: details.flaky,
-        actual: details.actual,
-        expected: details.expected,
+        message: data['message'] as String?,
+        trace: data['trace'] as String?,
+        known: data['known'] as bool?,
+        muted: data['muted'] as bool?,
+        flaky: data['flaky'] as bool?,
+        actual: data['actual'] as String?,
+        expected: data['expected'] as String?,
       ),
+      status: data['status'] == AllureStatus.failed.value
+          ? AllureStatus.failed
+          : AllureStatus.broken,
     );
   }
 

@@ -554,9 +554,21 @@ void main() {
             _expectFixtureHookGlobalError(
               run,
               hookName: 'setUp',
-              boomText: 'assert boom',
+              boomText: 'want',
               expectBrokenFixture: true,
               expectedFixtureStatus: 'failed',
+            );
+            final global = _allGlobalErrors(run).singleWhere(
+              (error) => (error['message'] as String? ?? '').startsWith(
+                'setUp failed:',
+              ),
+            );
+            expect(global['actual'], isNotNull, reason: run.output);
+            expect(global['expected'], isNotNull, reason: run.output);
+            expect(
+              '${global['actual']}${global['expected']}${global['message']}',
+              allOf(contains('got'), contains('want')),
+              reason: run.output,
             );
           },
         );
@@ -957,6 +969,20 @@ void _expectFixtureHookGlobalError(
     matchingErrors.single['trace'] as String?,
     contains('sample_test.dart'),
   );
+  final globalStatus = matchingErrors.single['status'] as String?;
+  if (expectedFixtureStatus != null) {
+    expect(
+      globalStatus,
+      expectedFixtureStatus,
+      reason: 'global error status must match fixture status\n${run.output}',
+    );
+  } else {
+    expect(
+      globalStatus,
+      anyOf('broken', 'failed'),
+      reason: 'global error must record failed/broken status\n${run.output}',
+    );
+  }
 }
 
 void _expectRuntimeBaseResultFields(

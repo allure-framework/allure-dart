@@ -416,7 +416,15 @@ Future<void> globalAttachmentPath(
 }
 
 /// Writes a run-level error entry.
+///
+/// Pass [error] (and optional [stackTrace]) to extract message, trace,
+/// actual, expected, and status the same way fixture/step failures do.
+/// Explicit [message], [trace], [actual], [expected], [status], and flag
+/// arguments override any values extracted from [error].
 Future<void> globalError({
+  Object? error,
+  StackTrace? stackTrace,
+  AllureStatus? status,
   String? message,
   String? trace,
   bool? known,
@@ -425,17 +433,31 @@ Future<void> globalError({
   String? actual,
   String? expected,
 }) {
+  final normalized = getGlobalErrorDetails(
+    error: error,
+    stackTrace: stackTrace,
+    status: status,
+    message: message,
+    trace: trace,
+    known: known,
+    muted: muted,
+    flaky: flaky,
+    actual: actual,
+    expected: expected,
+  );
+
   return _currentTestRuntime.send(
     RuntimeMessage(
       type: 'global_error',
       data: <String, Object?>{
-        'message': message,
-        'trace': trace,
-        'known': known,
-        'muted': muted,
-        'flaky': flaky,
-        'actual': actual,
-        'expected': expected,
+        'status': normalized.status.value,
+        'message': normalized.message,
+        'trace': normalized.trace,
+        'known': normalized.known,
+        'muted': normalized.muted,
+        'flaky': normalized.flaky,
+        'actual': normalized.actual,
+        'expected': normalized.expected,
       },
     ),
   );
