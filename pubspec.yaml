@@ -9,8 +9,9 @@ workspace:
   - packages/allure_dart_test
 
 dev_dependencies:
-  # 5.4.7 is the newest release compatible with the workspace SDK (^3.8).
-  dart_pre_commit: 5.4.7
+  # 6.1.3 needs Dart >=3.12 (package SDK constraint ^3.12.0).
+  # 6.1.5 needs Dart >=3.13; stay on 6.1.3 until CI/local SDK catch up.
+  dart_pre_commit: ^6.1.3
 
 # Format-only pre-commit checks. Enable with:
 #   dart run tool/setup_git_hooks.dart
