@@ -591,6 +591,20 @@ void _expectFixtureHookGlobalError(
     matchingErrors.single['trace'] as String?,
     contains('test/samples/$sampleFileName'),
   );
+  final globalStatus = matchingErrors.single['status'] as String?;
+  if (expectedFixtureStatus != null) {
+    expect(
+      globalStatus,
+      expectedFixtureStatus,
+      reason: 'global error status must match fixture status\n${run.output}',
+    );
+  } else {
+    expect(
+      globalStatus,
+      anyOf('broken', 'failed'),
+      reason: 'global error must record failed/broken status\n${run.output}',
+    );
+  }
 }
 
 /// Finds an attachment named [name] anywhere among a result's top-level

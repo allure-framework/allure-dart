@@ -508,11 +508,38 @@ class AllureGlobalAttachment extends AllureAttachment {
   }
 }
 
+/// Normalized global-error details with a required [status].
+///
+/// Produced by [getGlobalErrorDetails] before transport or writing.
+class AllureGlobalErrorDetails extends AllureStatusDetails {
+  /// Creates normalized global-error details.
+  const AllureGlobalErrorDetails({
+    required this.status,
+    super.message,
+    super.trace,
+    super.known,
+    super.muted,
+    super.flaky,
+    super.actual,
+    super.expected,
+  });
+
+  /// Resolved Allure status (`failed` or `broken` for typical global errors).
+  final AllureStatus status;
+
+  /// Converts these details to the Allure JSON representation.
+  @override
+  Map<String, Object?> toJson() {
+    return _compactMap<Object?>({...super.toJson(), 'status': status.value});
+  }
+}
+
 /// Error recorded outside an individual test result.
 class AllureGlobalError extends AllureStatusDetails {
   /// Creates a global error record.
   const AllureGlobalError({
     required this.timestamp,
+    this.status,
     super.message,
     super.trace,
     super.known,
@@ -525,10 +552,17 @@ class AllureGlobalError extends AllureStatusDetails {
   /// Timestamp in milliseconds since epoch when the error was recorded.
   final int timestamp;
 
+  /// Optional Allure status for the global error (`failed`, `broken`, ...).
+  final AllureStatus? status;
+
   /// Converts this global error to the Allure JSON representation.
   @override
   Map<String, Object?> toJson() {
-    return _compactMap<Object?>({...super.toJson(), 'timestamp': timestamp});
+    return _compactMap<Object?>({
+      ...super.toJson(),
+      'timestamp': timestamp,
+      'status': status?.value,
+    });
   }
 }
 
