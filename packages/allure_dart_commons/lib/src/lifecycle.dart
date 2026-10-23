@@ -817,10 +817,17 @@ class AllureLifecycle implements AllureRuntimeMessageSink {
   }
 
   /// Writes a run-level error entry.
-  Future<void> writeGlobalError(AllureStatusDetails details) async {
+  ///
+  /// [status] is optional and is stored on the global error record when set
+  /// (for example `failed` vs `broken` when reporting from an exception).
+  Future<void> writeGlobalError(
+    AllureStatusDetails details, {
+    AllureStatus? status,
+  }) async {
     await _ensureRunMetadataWritten();
     final error = AllureGlobalError(
       timestamp: currentTimestamp(),
+      status: status,
       message: details.message,
       trace: details.trace,
       known: details.known,
@@ -1243,7 +1250,12 @@ class AllureLifecycle implements AllureRuntimeMessageSink {
         );
         return;
       case 'global_error':
-        await writeGlobalError(_parseStatusDetails(message.data));
+        await writeGlobalError(
+          _parseStatusDetails(message.data),
+          status: message.data['status'] == null
+              ? null
+              : _parseStatus(message.data['status'].toString()),
+        );
         return;
       default:
         return;

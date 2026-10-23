@@ -30,6 +30,9 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: stable
+          # Pin so dart format matches a known SDK (floating stable
+          # changes formatter output across Dart minors).
+          flutter-version: '3.47.7'
 
       - name: Install workspace dependencies
         run: dart pub get
@@ -72,6 +75,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version: '3.47.7'
 
       - name: Publish dry-run
         run: bash scripts/publish-dry-run.sh
@@ -112,6 +116,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version: '3.47.7'
 
       - name: Install workspace dependencies
         run: dart pub get

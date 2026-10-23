@@ -100,6 +100,21 @@ String serializeValue(Object? value) {
   }
 }
 
+/// Strips ANSI escape sequences from [value].
+///
+/// Mirrors allure-js `stripAnsi` (chalk/strip-ansi regex).
+String stripAnsi(String value) {
+  return value.replaceAll(_ansiEscapePattern, '');
+}
+
+/// Source: https://github.com/chalk/ansi-regex (used by strip-ansi).
+final RegExp _ansiEscapePattern = RegExp(
+  [
+    r'[\u001B\u009B][[\]()#;?]*(?:(?:(?:(?:;[-a-zA-Z\d\/#&.:=?%@~_]+)*|[a-zA-Z\d]+(?:;[-a-zA-Z\d\/#&.:=?%@~_]*)*)?\u0007)',
+    r'(?:(?:\d{1,4}(?:;\d{0,4})*)?[\dA-PR-TZcf-nq-uy=><~]))',
+  ].join('|'),
+);
+
 /// Maps an error object to the closest Allure status.
 AllureStatus getStatusFromError(Object error, [StackTrace? stackTrace]) {
   final typeName = error.runtimeType.toString().toLowerCase();
@@ -131,6 +146,11 @@ AllureStatus getStatusFromError(Object error, [StackTrace? stackTrace]) {
 }
 
 /// Extracts an Allure status message, trace, actual, and expected values.
+///
+/// Prefer structured fields (`actual` / `expected` / Jest-style
+/// `matcherResult`) when present. For `package:test` [TestFailure] and other
+/// matcher failures that only embed values in the message, fall back to
+/// parsing `Expected:` / `Actual:` lines from [formatFailure].
 AllureStatusDetails getMessageAndTraceFromError(
   Object error, [
   StackTrace? stackTrace,
@@ -138,16 +158,193 @@ AllureStatusDetails getMessageAndTraceFromError(
   final actual = _readDynamicField(error, 'actual');
   final expected = _readDynamicField(error, 'expected');
   final matcherResult = _readDynamicField(error, 'matcherResult');
+  // `toString()` retains the complete Dart error description (for example,
+  // ArgumentError includes the invalid value and parameter name).
+  final message = error.toString();
+
+  var resolvedActual = actual == null
+      ? _extractMatcherValue(matcherResult, 'actual')
+      : serializeValue(actual);
+  var resolvedExpected = expected == null
+      ? _extractMatcherValue(matcherResult, 'expected')
+      : serializeValue(expected);
+
+  if ((resolvedActual == null || resolvedExpected == null) &&
+      message.contains('Expected:') &&
+      message.contains('Actual:')) {
+    final parsed = _parseExpectedActualFromMessage(message);
+    resolvedActual ??= parsed.actual;
+    resolvedExpected ??= parsed.expected;
+  }
+
+  final dynamicStack = _readDynamicField(error, 'stack');
+  final resolvedTrace = stackTrace?.toString() ?? dynamicStack?.toString();
 
   return AllureStatusDetails(
-    message: error.toString(),
-    trace: stackTrace?.toString(),
-    actual: actual == null
-        ? _extractMatcherValue(matcherResult, 'actual')
-        : serializeValue(actual),
-    expected: expected == null
-        ? _extractMatcherValue(matcherResult, 'expected')
-        : serializeValue(expected),
+    message: message.isEmpty ? null : stripAnsi(message),
+    trace: resolvedTrace == null ? null : stripAnsi(resolvedTrace),
+    actual: resolvedActual,
+    expected: resolvedExpected,
+  );
+}
+
+/// Normalizes global-error inputs the same way allure-js `getGlobalErrorDetails`
+/// does before transport.
+///
+/// Pass [error] (and optional [stackTrace]) to extract fields and infer status,
+/// or pass explicit [status] with optional [details] / field overrides.
+/// Explicit [status] and field arguments win over extracted values.
+AllureGlobalErrorDetails getGlobalErrorDetails({
+  Object? error,
+  StackTrace? stackTrace,
+  AllureStatus? status,
+  AllureStatusDetails? details,
+  String? message,
+  String? trace,
+  String? actual,
+  String? expected,
+  bool? known,
+  bool? muted,
+  bool? flaky,
+}) {
+  final Object source;
+  if (error != null) {
+    source = error;
+  } else if (details != null) {
+    source = details;
+  } else {
+    source = AllureStatusDetails(
+      message: message,
+      trace: trace,
+      actual: actual,
+      expected: expected,
+      known: known,
+      muted: muted,
+      flaky: flaky,
+    );
+  }
+
+  final resolvedStatus = status ?? getStatusFromError(source, stackTrace);
+  final extracted = getMessageAndTraceFromError(source, stackTrace);
+
+  // Start from extraction, then prefer source.message / source.trace the way
+  // allure-js does (`error.message`, `"trace" in error`).
+  var resolvedMessage = _messageFromGlobalErrorSource(source, extracted);
+  var resolvedTrace = _traceFromGlobalErrorSource(source, extracted);
+
+  // Optional details object overrides extracted source fields.
+  if (details != null && !identical(details, source)) {
+    if (details.message != null) {
+      resolvedMessage = stripAnsi(details.message!);
+    }
+    if (details.trace != null) {
+      resolvedTrace = stripAnsi(details.trace!);
+    }
+  }
+
+  // Explicit field arguments win last.
+  if (message != null) {
+    resolvedMessage = stripAnsi(message);
+  }
+  if (trace != null) {
+    resolvedTrace = stripAnsi(trace);
+  }
+
+  return AllureGlobalErrorDetails(
+    status: resolvedStatus,
+    message: resolvedMessage,
+    trace: resolvedTrace,
+    known: known ?? details?.known ?? extracted.known,
+    muted: muted ?? details?.muted ?? extracted.muted,
+    flaky: flaky ?? details?.flaky ?? extracted.flaky,
+    actual: actual ?? details?.actual ?? extracted.actual,
+    expected: expected ?? details?.expected ?? extracted.expected,
+  );
+}
+
+/// Builds a `global_error` runtime message shaped like allure-js
+/// `toGlobalErrorMessage`.
+///
+/// Status collapses to [AllureStatus.failed] or [AllureStatus.broken]. Message
+/// becomes `$name failed` or `$name failed: ${details.message}`.
+({String type, Map<String, Object?> data}) toGlobalErrorMessage({
+  required String name,
+  required AllureStatusDetails details,
+  required AllureStatus status,
+}) {
+  final collapsedStatus = status == AllureStatus.failed
+      ? AllureStatus.failed
+      : AllureStatus.broken;
+  final prefixedMessage = details.message == null || details.message!.isEmpty
+      ? '$name failed'
+      : '$name failed: ${details.message}';
+
+  return (
+    type: 'global_error',
+    data: <String, Object?>{
+      ...details.toJson(),
+      'status': collapsedStatus.value,
+      'message': prefixedMessage,
+    },
+  );
+}
+
+String? _messageFromGlobalErrorSource(
+  Object source,
+  AllureStatusDetails extracted,
+) {
+  if (source is AllureStatusDetails) {
+    // Preserve empty strings the same way JS keeps `message: ""`.
+    return source.message == null ? null : stripAnsi(source.message!);
+  }
+  // For ordinary Dart errors, keep `toString()` from extraction rather than
+  // reducing the error to a potentially incomplete `message` field.
+  return extracted.message;
+}
+
+String? _traceFromGlobalErrorSource(
+  Object source,
+  AllureStatusDetails extracted,
+) {
+  if (source is AllureStatusDetails) {
+    // Preserve an explicitly supplied empty trace, but fall back to a supplied
+    // StackTrace when the details object has no trace.
+    return source.trace == null ? extracted.trace : stripAnsi(source.trace!);
+  }
+  final dynamicTrace = _readDynamicField(source, 'trace');
+  if (dynamicTrace != null) {
+    return stripAnsi(dynamicTrace.toString());
+  }
+  return extracted.trace;
+}
+
+/// Parses `package:matcher` [formatFailure] labels from an error message.
+///
+/// Handles prefixed messages such as `setUp failed: Expected: ...` and
+/// multiline pretty-printed values.
+({String? actual, String? expected}) _parseExpectedActualFromMessage(
+  String message,
+) {
+  final expectedMatch = RegExp(
+    r'Expected:\s*(.*?)(?=\n\s*Actual:)',
+    dotAll: true,
+  ).firstMatch(message);
+  final actualMatch = RegExp(
+    r'(?:^|\n)\s*Actual:\s*(.*?)(?=\n\s*(?:Which:|Expected:)|\s*$)',
+    dotAll: true,
+  ).firstMatch(message);
+
+  String? normalize(String? value) {
+    if (value == null) {
+      return null;
+    }
+    final trimmed = value.trim();
+    return trimmed.isEmpty ? null : trimmed;
+  }
+
+  return (
+    expected: normalize(expectedMatch?.group(1)),
+    actual: normalize(actualMatch?.group(1)),
   );
 }
 
@@ -167,6 +364,18 @@ Object? _readDynamicField(Object? target, String field) {
   if (target == null) {
     return null;
   }
+  if (target is AllureStatusDetails) {
+    return switch (field) {
+      'message' => target.message,
+      'trace' => target.trace,
+      'actual' => target.actual,
+      'expected' => target.expected,
+      'known' => target.known,
+      'muted' => target.muted,
+      'flaky' => target.flaky,
+      _ => null,
+    };
+  }
   try {
     final dynamic dynamicTarget = target;
     return switch (field) {
@@ -174,6 +383,12 @@ Object? _readDynamicField(Object? target, String field) {
       'actual' => dynamicTarget.actual,
       'expected' => dynamicTarget.expected,
       'inspect' => dynamicTarget.inspect,
+      'message' => dynamicTarget.message,
+      'trace' => dynamicTarget.trace,
+      'stack' => dynamicTarget.stack,
+      'known' => dynamicTarget.known,
+      'muted' => dynamicTarget.muted,
+      'flaky' => dynamicTarget.flaky,
       _ => null,
     };
   } catch (_) {
