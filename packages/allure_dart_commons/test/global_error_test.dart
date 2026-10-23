@@ -260,6 +260,25 @@ void main() {
       expect(normalized.expected, 'value');
     });
 
+    test('keeps complete Dart error descriptions', () {
+      final details = getGlobalErrorDetails(
+        error: ArgumentError.value(-1, 'count', 'must be positive'),
+      );
+
+      expect(details.message, contains('count'));
+      expect(details.message, contains('-1'));
+      expect(details.message, contains('must be positive'));
+    });
+
+    test('uses a supplied stack trace when explicit details have no trace', () {
+      final details = getGlobalErrorDetails(
+        message: 'setup failed',
+        stackTrace: StackTrace.fromString('supplied stack'),
+      );
+
+      expect(details.trace, 'supplied stack');
+    });
+
     test('prefers trace over stack and strips ANSI formatting', () {
       final details = getGlobalErrorDetails(
         error: _TracedError(

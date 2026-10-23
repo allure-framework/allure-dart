@@ -158,10 +158,9 @@ AllureStatusDetails getMessageAndTraceFromError(
   final actual = _readDynamicField(error, 'actual');
   final expected = _readDynamicField(error, 'expected');
   final matcherResult = _readDynamicField(error, 'matcherResult');
-  final dynamicMessage = _readDynamicField(error, 'message');
-  final message = dynamicMessage == null
-      ? error.toString()
-      : dynamicMessage.toString();
+  // `toString()` retains the complete Dart error description (for example,
+  // ArgumentError includes the invalid value and parameter name).
+  final message = error.toString();
 
   var resolvedActual = actual == null
       ? _extractMatcherValue(matcherResult, 'actual')
@@ -298,10 +297,8 @@ String? _messageFromGlobalErrorSource(
     // Preserve empty strings the same way JS keeps `message: ""`.
     return source.message == null ? null : stripAnsi(source.message!);
   }
-  if (_hasDynamicField(source, 'message')) {
-    final raw = _readDynamicField(source, 'message');
-    return raw == null ? null : stripAnsi(raw.toString());
-  }
+  // For ordinary Dart errors, keep `toString()` from extraction rather than
+  // reducing the error to a potentially incomplete `message` field.
   return extracted.message;
 }
 
@@ -310,7 +307,9 @@ String? _traceFromGlobalErrorSource(
   AllureStatusDetails extracted,
 ) {
   if (source is AllureStatusDetails) {
-    return source.trace == null ? null : stripAnsi(source.trace!);
+    // Preserve an explicitly supplied empty trace, but fall back to a supplied
+    // StackTrace when the details object has no trace.
+    return source.trace == null ? extracted.trace : stripAnsi(source.trace!);
   }
   final dynamicTrace = _readDynamicField(source, 'trace');
   if (dynamicTrace != null) {
