@@ -907,6 +907,10 @@ class AllureLifecycle implements AllureRuntimeMessageSink {
       state.result.parameters.addAll(scope.parameters);
       state.result.description ??= scope.description;
       state.result.descriptionHtml ??= scope.descriptionHtml;
+      state.result.expectedResult ??= scope.expectedResult;
+      state.result.expectedResultHtml ??= scope.expectedResultHtml;
+      state.result.precondition ??= scope.precondition;
+      state.result.preconditionHtml ??= scope.preconditionHtml;
     }
   }
 
@@ -1086,6 +1090,10 @@ class AllureLifecycle implements AllureRuntimeMessageSink {
     final displayName = data['displayName']?.toString();
     final description = data['description']?.toString();
     final descriptionHtml = data['descriptionHtml']?.toString();
+    final expectedResult = data['expectedResult']?.toString();
+    final expectedResultHtml = data['expectedResultHtml']?.toString();
+    final precondition = data['precondition']?.toString();
+    final preconditionHtml = data['preconditionHtml']?.toString();
     final explicitHistoryId = data['historyId']?.toString();
     final explicitTestCaseId = data['testCaseId']?.toString();
     final explicitTestCaseName = data['testCaseName']?.toString();
@@ -1115,6 +1123,10 @@ class AllureLifecycle implements AllureRuntimeMessageSink {
         scope.parameters.addAll(parameters);
         scope.description ??= description;
         scope.descriptionHtml ??= descriptionHtml;
+        scope.expectedResult ??= expectedResult;
+        scope.expectedResultHtml ??= expectedResultHtml;
+        scope.precondition ??= precondition;
+        scope.preconditionHtml ??= preconditionHtml;
       }
       return;
     }
@@ -1130,6 +1142,12 @@ class AllureLifecycle implements AllureRuntimeMessageSink {
     test.result.description = description ?? test.result.description;
     test.result.descriptionHtml =
         descriptionHtml ?? test.result.descriptionHtml;
+    test.result.expectedResult = expectedResult ?? test.result.expectedResult;
+    test.result.expectedResultHtml =
+        expectedResultHtml ?? test.result.expectedResultHtml;
+    test.result.precondition = precondition ?? test.result.precondition;
+    test.result.preconditionHtml =
+        preconditionHtml ?? test.result.preconditionHtml;
     test.result.historyId = explicitHistoryId ?? test.result.historyId;
     test.result.testCaseId = explicitTestCaseId ?? test.result.testCaseId;
     test.result.testCaseName = explicitTestCaseName ?? test.result.testCaseName;
@@ -1288,6 +1306,10 @@ class _ScopeState {
   final List<AllureParameter> parameters = <AllureParameter>[];
   String? description;
   String? descriptionHtml;
+  String? expectedResult;
+  String? expectedResultHtml;
+  String? precondition;
+  String? preconditionHtml;
   int? expectedChildrenCount;
   int completedChildren = 0;
 }
