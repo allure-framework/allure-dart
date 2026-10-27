@@ -215,6 +215,11 @@ The adapters expose runtime helpers you can call inside tests and fixtures:
 ```dart
 await allure.displayName('Readable test name');
 await allure.description('Checks the successful profile path.');
+await allure.expectedResult('The profile details are displayed.');
+await allure.precondition('A user is signed in.');
+// Use the HTML variants when the content is already formatted as HTML.
+await allure.expectedResultHtml('<p>The profile details are displayed.</p>');
+await allure.preconditionHtml('<p>A user is signed in.</p>');
 await allure.testCaseName('profile current user success path');
 await allure.allureId('AUTH-42');
 await allure.owner('team-qa');

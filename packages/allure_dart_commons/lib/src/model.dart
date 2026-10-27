@@ -362,6 +362,10 @@ class AllureTestResult extends AllureExecutable {
     this.testCaseId,
     this.testCaseName,
     this.titlePath,
+    this.expectedResult,
+    this.expectedResultHtml,
+    this.precondition,
+    this.preconditionHtml,
     super.name,
     super.status,
     super.statusDetails = const AllureStatusDetails(),
@@ -396,6 +400,18 @@ class AllureTestResult extends AllureExecutable {
   /// Hierarchical title path for the test.
   List<String>? titlePath;
 
+  /// Markdown expected result for the test.
+  String? expectedResult;
+
+  /// HTML expected result for the test.
+  String? expectedResultHtml;
+
+  /// Markdown precondition for the test.
+  String? precondition;
+
+  /// HTML precondition for the test.
+  String? preconditionHtml;
+
   /// Labels attached to the test result.
   final List<AllureLabel> labels;
 
@@ -411,6 +427,10 @@ class AllureTestResult extends AllureExecutable {
       'testCaseId': testCaseId,
       'testCaseName': testCaseName,
       'titlePath': titlePath,
+      'expectedResult': expectedResult,
+      'expectedResultHtml': expectedResultHtml,
+      'precondition': precondition,
+      'preconditionHtml': preconditionHtml,
       ...executableToJson(),
       'labels': labels.map((label) => label.toJson()).toList(),
       'links': links.map((link) => link.toJson()).toList(),

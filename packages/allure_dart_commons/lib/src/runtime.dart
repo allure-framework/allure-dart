@@ -208,6 +208,46 @@ Future<void> descriptionHtml(String html) {
   );
 }
 
+/// Sets the Markdown expected result for the current test.
+Future<void> expectedResult(String markdown) {
+  return _currentTestRuntime.send(
+    RuntimeMessage(
+      type: 'metadata',
+      data: <String, Object?>{'expectedResult': markdown},
+    ),
+  );
+}
+
+/// Sets the HTML expected result for the current test.
+Future<void> expectedResultHtml(String html) {
+  return _currentTestRuntime.send(
+    RuntimeMessage(
+      type: 'metadata',
+      data: <String, Object?>{'expectedResultHtml': html},
+    ),
+  );
+}
+
+/// Sets the Markdown precondition for the current test.
+Future<void> precondition(String markdown) {
+  return _currentTestRuntime.send(
+    RuntimeMessage(
+      type: 'metadata',
+      data: <String, Object?>{'precondition': markdown},
+    ),
+  );
+}
+
+/// Sets the HTML precondition for the current test.
+Future<void> preconditionHtml(String html) {
+  return _currentTestRuntime.send(
+    RuntimeMessage(
+      type: 'metadata',
+      data: <String, Object?>{'preconditionHtml': html},
+    ),
+  );
+}
+
 /// Overrides the display name of the current test.
 Future<void> displayName(String name) {
   return _currentTestRuntime.send(
